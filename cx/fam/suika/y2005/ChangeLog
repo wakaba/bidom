@@ -1,0 +1,5 @@
+2005-10-25  Wakaba  <w@suika.fam.cx>
+
+	* ElementBox.js, ElementClass.js, ElementView.js, ChangeLog: New files.
+	
+	* Class, DOM, ElementView: New directories.
