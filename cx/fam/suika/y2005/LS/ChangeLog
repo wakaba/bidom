@@ -1,0 +1,9 @@
+2005-10-27  Wakaba  <w@suika.fam.cx>
+
+	* ChangeLog: New file.
+
+2005-10-26  Wakaba  <w@suika.fam.cx>
+
+	* Generic.js: New script.
+	
+	* SimpleSerializer.js: New script.
