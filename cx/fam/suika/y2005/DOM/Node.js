@@ -104,6 +104,22 @@ cx.fam.suika.y2005.DOM.Node.Node = function (node) {
   for (var i in cx.fam.suika.y2005.DOM.Node.Node._Constructor) {
     cx.fam.suika.y2005.DOM.Node.Node._Constructor[i].apply (this, arguments);
   }
+  if (!cx.fam.suika.y2005.DOM.Node.Node._CompatTested) {
+    cx.fam.suika.y2005.DOM.Node.Node._CompatTested = true;
+    var doc = this._Node.ownerDocument;
+    if (!doc) doc = this._Node;
+    var el = doc.createElement ("p");
+    el.appendChild (doc.createTextNode ("&"));
+    if (el.innerText == "&amp;") { /* Opera 8 */
+      cx.fam.suika.y2005.DOM.Node.Node.prototype.getTextContent = function () {
+        return this._Node.innerText
+                         .replace ("&lt;", "<")
+                         .replace ("&gt;", ">")
+                         .replace ("&quot;", '"')
+                         .replace ("&amp;", "&");
+      };
+    }
+  }
 };
 cx.fam.suika.y2005.DOM.Node.Node._SupportedFeature = {};
 cx.fam.suika.y2005.DOM.Node.Node._AddFeature =
@@ -163,7 +179,7 @@ cx.fam.suika.y2005.DOM.Node.Node.prototype.DOCUMENT_FRAGMENT_NODE = 11;
 cx.fam.suika.y2005.DOM.Node.Node.prototype.NOTATION_NODE = 12;
 
 cx.fam.suika.y2005.DOM.Node.Node.prototype.appendChild = function (c) {
-  return this._Node.appendChild (c._Node);
+  return cx.fam.suika.y2005.DOM.Node.getDOMNode (this._Node.appendChild (c._Node));
 };
 cx.fam.suika.y2005.DOM.Node.Node.prototype.getAttributes = function () {
   return null;
@@ -183,6 +199,21 @@ cx.fam.suika.y2005.DOM.Node.Node.prototype.hasAttributes = function () {
 };
 cx.fam.suika.y2005.DOM.Node.Node.prototype.hasChildNodes = function () {
   return this._Node.hasChildNodes ();
+};
+/** Marked content [non-standard] */
+cx.fam.suika.y2005.DOM.Node.Node.prototype.getInnerHTML = function () {
+  cx.fam.suika.y2005.DOM.Implementation.requireDOMImplementationFeature
+    ("http://suika.fam.cx/~wakaba/archive/2004/dom/ls#generic.", "3.0");
+  var impl = this.getOwnerDocument ().getImplementation ();
+  var se = impl.createGLSSerializer
+    ("http://suika.fam.cx/~wakaba/archive/2004/dom/ls#SerializeDocumentInstance");
+  var r = "";
+  var cs = this.getChildNodes ();
+  var csl = cs.getLength ();
+  for (var i = 0; i < csl; i++) {
+    r += se.writeToString (cs.item (i));
+  }
+  return r;
 };
 cx.fam.suika.y2005.DOM.Node.Node.prototype.insertBefore = function (c, r) {
   return cx.fam.suika.y2005.DOM.Node.getDOMNode
@@ -261,13 +292,24 @@ cx.fam.suika.y2005.DOM.Node.Node.prototype.lookupNamespaceURI = function (pfx) {
   } // NodeType
 };
 cx.fam.suika.y2005.DOM.Node.Node.prototype.getNamespaceURI = function () {
-  return this._Node.namespaceURI;
+  return typeof (this._Node._NamespaceURI) != "undefined"
+           ? this._Node._NamespaceURI
+           : this._Node.namespaceURI;
 };
 cx.fam.suika.y2005.DOM.Node.Node.prototype.getNextSibling = function () {
   return cx.fam.suika.y2005.DOM.Node.getDOMNode (this._Node.nextSibling);
 };
 cx.fam.suika.y2005.DOM.Node.Node.prototype.getNodeType = function () {
   return this._Node.nodeType;
+};
+/** Marked content with markup of the node itself [non-standard] */
+cx.fam.suika.y2005.DOM.Node.Node.prototype.getOuterHTML = function () {
+  cx.fam.suika.y2005.DOM.Implementation.requireDOMImplementationFeature
+    ("http://suika.fam.cx/~wakaba/archive/2004/dom/ls#generic.", "3.0");
+  var impl = this.getOwnerDocument ().getImplementation ();
+  var se = impl.createGLSSerializer
+    ("http://suika.fam.cx/~wakaba/archive/2004/dom/ls#SerializeDocumentInstance");
+  return se.writeToString (this);
 };
 cx.fam.suika.y2005.DOM.Node.Node.prototype.getOwnerDocument = function () {
   return this._Node.ownerDocument
@@ -425,6 +467,9 @@ cx.fam.suika.y2005.DOM.Node.Document = function (node) {
         }
       };
     }
+    if (!this._Node.createProcessingInstruction) {
+      /* TODO: PI for WinIE and Gecko HTML mode */
+    }
     cx.fam.suika.y2005.DOM.Node.Document._CompatTested = true;
   } // For Opera 8
   for (var i in cx.fam.suika.y2005.DOM.Node.Document._Constructor) {
@@ -457,10 +502,32 @@ function (namespaceURI, qualifiedName) {
   return cx.fam.suika.y2005.DOM.Node.getDOMNode
            (this._Node.createAttributeNS (namespaceURI, qualifiedName));
 };
+cx.fam.suika.y2005.DOM.Node.Document.prototype.createComment =
+function (data) {
+  return cx.fam.suika.y2005.DOM.Node.getDOMNode (this._Node.createComment (data));
+};
+cx.fam.suika.y2005.DOM.Node.Document.prototype.createDocumentFragment =
+function (namespaceURI, qualifiedName) {
+  return cx.fam.suika.y2005.DOM.Node.getDOMNode
+           (this._Node.createDocumentFragment ());
+};
 cx.fam.suika.y2005.DOM.Node.Document.prototype.createElementNS =
 function (namespaceURI, qualifiedName) {
-  return cx.fam.suika.y2005.DOM.Node.getDOMElement
-           (this._Node.createElementNS (namespaceURI, qualifiedName));
+  var el = this._Node.createElementNS (namespaceURI, qualifiedName);
+  el._NamespaceURI = namespaceURI;
+  var nm = qualifiedName.split (":", 2);
+  el._LocalName = nm[1] != null ? nm[1] : nm[0];
+  return cx.fam.suika.y2005.DOM.Node.getDOMElement (el);
+};
+cx.fam.suika.y2005.DOM.Node.Document.prototype.createEntityReference =
+function (target, data) {
+  return new cx.fam.suika.y2005.DOM.Node.getDOMNode
+           (this._Node.createEntityReference (target, data));
+};
+cx.fam.suika.y2005.DOM.Node.Document.prototype.createProcessingInstruction =
+function (target, data) {
+  return new cx.fam.suika.y2005.DOM.Node.getDOMPI
+           (this._Node.createProcessingInstruction (target, data));
 };
 cx.fam.suika.y2005.DOM.Node.Document.prototype.createTextNode =
 function (s) {
@@ -486,6 +553,30 @@ cx.fam.suika.y2005.DOM.Node.Document.prototype.getImplementation = function () {
   return new cx.fam.suika.y2005.DOM.Implementation.DOMImplementation
            (this._Node.implementation);
 };
+/** Marked content [non-standard] */
+cx.fam.suika.y2005.DOM.Node.Document.prototype.getInnerHTML = function () {
+  cx.fam.suika.y2005.DOM.Implementation.requireDOMImplementationFeature
+    ("http://suika.fam.cx/~wakaba/archive/2004/dom/ls#generic.", "3.0");
+  var impl = this.getImplementation ();
+  var se = impl.createGLSSerializer
+    ("http://suika.fam.cx/~wakaba/archive/2004/dom/ls#SerializeDocumentInstance");
+  var r = "";
+  var cs = this.getChildNodes ();
+  var csl = cs.getLength ();
+  for (var i = 0; i < csl; i++) {
+    r += se.writeToString (cs.item (i)) + "\n";
+  }
+  return r;
+};
+/** Marked content with optional XML declaration [non-standard] */
+cx.fam.suika.y2005.DOM.Node.Document.prototype.getOuterHTML = function () {
+  cx.fam.suika.y2005.DOM.Implementation.requireDOMImplementationFeature
+    ("http://suika.fam.cx/~wakaba/archive/2004/dom/ls#generic.", "3.0");
+  var impl = this.getImplementation ();
+  var se = impl.createGLSSerializer
+    ("http://suika.fam.cx/~wakaba/archive/2004/dom/ls#SerializeDocumentInstance");
+  return se.writeToString (this);
+};
 cx.fam.suika.y2005.DOM.Node.Document.prototype.getTextContent = function () {
   return null;
 };
@@ -497,6 +588,34 @@ cx.fam.suika.y2005.DOM.Node.Document.prototype.getNodeValue = function () {
   return null;
 };
 cx.fam.suika.y2005.DOM.Node.Document.prototype.setNodeValue = function (newValue) {};
+cx.fam.suika.y2005.DOM.Node.Document.prototype.getXMLEncoding = function () {
+  return this._Node._XMLEncoding
+           ? this._Node._XMLEncoding
+           : this._Node.xmlEncoding ? this._Node.xmlEncoding : null;
+};
+/** Setting |xmlEncoding| attribute [non-standard] */
+cx.fam.suika.y2005.DOM.Node.Document.prototype.setXMLEncoding = function (newValue) {
+  this._Node._XMLEncoding = newValue;
+};
+cx.fam.suika.y2005.DOM.Node.Document.prototype.getXMLStandalone = function () {
+  return this._Node.xmlStandalone ? true : false;
+};
+cx.fam.suika.y2005.DOM.Node.Document.prototype.setXMLStandalone = function (newValue) {
+  this._Node.xmlStandalone = newValue;
+};
+cx.fam.suika.y2005.DOM.Node.Document.prototype.getXMLVersion = function () {
+  return this._Node._XMLVersion
+           ? this._Node._XMLVersion
+           : this._Node.xmlVersion ? this._Node.xmlVersion : "1.0";
+};
+cx.fam.suika.y2005.DOM.Node.Document.prototype.setXMLVersion = function (newValue) {
+  try {
+    this._Node.xmlVersion = newValue;
+  } catch (e) {
+    /* Gecko HTML mode */
+    this._Node._XMLVersion = newValue;
+  }
+};
 
 cx.fam.suika.y2005.DOM.Node.Document.prototype.toString = function () {
   return "[object Document]";
@@ -552,9 +671,12 @@ cx.fam.suika.y2005.DOM.Node.Element = function (node) {
       };
       cx.fam.suika.y2005.DOM.Node.Element.prototype._ReplaceAttrName =
       function (localName) {
-        if (localName == "class") {
+        switch (localName) {
+        case "class":
           return "className";
-        } else {
+        case "className":
+          return "@className";
+        default:
           return localName;
         }
       };
@@ -572,7 +694,21 @@ cx.fam.suika.y2005.DOM.Node.Element = function (node) {
         cx.fam.suika.y2005.DOM.Node.Element.prototype.setAttributeNS
           = cx.fam.suika.y2005.DOM.Node.Element.prototype._SetAttributeNSCompat;
         cx.fam.suika.y2005.DOM.Node.Element.prototype._ReplaceAttrName =
-        function (localName) { return localName };
+        function (localName) {
+          if (localName.indexOf (":") > -1 &&
+              localName.substring (0, 4) != "xml:") {
+            return localName;
+          } else {
+            return localName.replace (/([A-Z])/g,
+                                        function () {return "*" + RegExp.$1});
+          }
+        };
+        cx.fam.suika.y2005.DOM.Node.Element.prototype.getLocalName =
+        function () {
+          return typeof (this._Node._LocalName) == "undefined"
+                   ? this._Node.localName
+                   : this._Node._LocalName;
+        };
       }
     }
   } // For Opera 8
@@ -629,10 +765,12 @@ function (namespaceURI, qualifiedName, localName) {
 };
 cx.fam.suika.y2005.DOM.Node.Element.prototype.setAttributeNS =
 function (namespaceURI, qualifiedName, newValue) {
+  /*
   var attr = this.getOwnerDocument ().createAttributeNS (namespaceURI, qualifiedName);
   attr.setValue (newValue);
   this._Node.setAttributeNodeNS (attr._Node);
-  /* NOTE: Opera 8's implementation is problematic. */
+  _* NOTE: Opera 8's implementation is problematic. */
+  this._Node.setAttributeNS (namespaceURI, qualifiedName, newValue);
 };
 cx.fam.suika.y2005.DOM.Node.Element.prototype.getNodeName = function () {
   var prefix = this.getPrefix ();
@@ -647,8 +785,7 @@ cx.fam.suika.y2005.DOM.Node.Element.prototype.getNodeName = function () {
 cx.fam.suika.y2005.DOM.Node.Element.prototype._GetAttributeNSCompat =
 function (namespaceURI, localName) {
   if (!namespaceURI ||
-      (namespaceURI == "http://www.w3.org/2002/xmlns/" &&
-       qualifiedName == "xmlns")) {
+      (namespaceURI == "http://www.w3.org/2002/xmlns/" && qualifiedName == "xmlns")) {
     return this._Node.getAttribute (this._ReplaceAttrName (localName));
   } else if (namespaceURI == "http://www.w3.org/XML/1998/namespace") {
     return this._Node.getAttribute ("xml:" + localName);
@@ -665,8 +802,7 @@ function (namespaceURI, localName) {
 cx.fam.suika.y2005.DOM.Node.Element.prototype._HasAttributeNSCompat =
 function (namespaceURI, localName) {
   if (!namespaceURI ||
-      (namespaceURI == "http://www.w3.org/2002/xmlns/" &&
-       qualifiedName == "xmlns")) {
+      (namespaceURI == "http://www.w3.org/2002/xmlns/" && qualifiedName == "xmlns")) {
     return this._Node.getAttributeNode (this._ReplaceAttrName (localName))
            ? true : false;
   } else if (namespaceURI == "http://www.w3.org/XML/1998/namespace") {
@@ -707,7 +843,7 @@ cx.fam.suika.y2005.DOM.Node.Element.prototype._SetAttributeNSCompat =
       if (!namespaceURI ||
           (namespaceURI == "http://www.w3.org/XML/1998/namespace" &&
            qualifiedName.slice (0, 4) == "xml:") ||
-          (namespaceURI == "http://www.w3.org/2002/xmlns/" &&
+          (namespaceURI == "http://www.w3.org/2000/xmlns/" &&
            qualifiedName == "xmlns")) {
         this._Node.setAttribute (this._ReplaceAttrName (qualifiedName), newValue);
       } else {
@@ -738,31 +874,32 @@ cx.fam.suika.y2005.DOM.Node.Attr = function (node) {
   cx.fam.suika.y2005.DOM.Node.Attr._superclass.apply (this, [node]);
   if (this._Node.localName == null || window.opera) {
     cx.fam.suika.y2005.DOM.Node.Attr.prototype.getLocalName = function () {
-      if (this._Node.localName != null) {
-        return this._Node.localName;
+      var name = this._Node.name;
+      if (window.opera) {
+        name = name.toLowerCase ()
+                   .replace (/\*(.)/g, function () {return RegExp.$1.toUpperCase ()});
+      }
+      var nm = name.split (":", 2);
+      if (nm[1]) {
+        return nm[1];
       } else {
-        var nm = this._Node.name.split (":", 2);
-        if (nm[1]) {
-          return nm[1];
+        if (nm[0].charAt (0) == "@") {
+          return nm[0].slice (1);
         } else {
           return nm[0];
         }
       }
     };
     cx.fam.suika.y2005.DOM.Node.Attr.prototype.getPrefix = function () {
-      if (this._Node.prefix != null) {
-        return this._Node.prefix;
+      var nm = this._Node.nodeName.split (":", 2);
+      if (nm[1]) {
+        return nm[0];
       } else {
-        var nm = this._Node.nodeName.split (":", 2);
-        if (nm[1]) {
-          return nm[0];
-        } else {
-          return null;
-        }
+        return null;
       }
     };
     cx.fam.suika.y2005.DOM.Node.Attr.prototype.getNamespaceURI = function () {
-      if (this._Node._NamespaceURI != null) {
+      if (typeof (this._Node._NamespaceURI) != "undefined") {
         return this._Node._NamespaceURI;
       } else {
         var nn = this.getNodeName ();
@@ -1055,6 +1192,13 @@ function (feature, version, impl) {
     (cx.fam.suika.y2005.DOM.Node.Comment, feature, version, impl);
 };
 
+cx.fam.suika.y2005.DOM.Node.Comment.prototype.getInnerHTML = function () {
+  return this.getData ();
+};
+cx.fam.suika.y2005.DOM.Node.Comment.prototype.getOuterHTML = function () {
+  return "<!--" + this.getData () + "-->";
+};
+
 cx.fam.suika.y2005.DOM.Node.Comment.prototype.toString = function () {
   return "[object Comment]";
 };
@@ -1062,7 +1206,8 @@ cx.fam.suika.y2005.DOM.Node.Comment.prototype.toString = function () {
 /* ProcessingInstruction */
 
 cx.fam.suika.y2005.DOM.Node.ProcessingInstruction = function (node) {
-  cx.fam.suika.y2005.DOM.Node.ProcessingInstruction._superclass.apply (this, [node]);
+  cx.fam.suika.y2005.DOM.Node.ProcessingInstruction._superclass.apply
+    (this, arguments);
   for (var i in cx.fam.suika.y2005.DOM.Node.ProcessingInstruction._Constructor) {
     cx.fam.suika.y2005.DOM.Node.ProcessingInstruction._Constructor[i].apply
       (this, arguments);
@@ -1076,7 +1221,7 @@ function (feature, version, impl) {
   cx.fam.suika.y2005.DOM.Node._AddFeature
     (cx.fam.suika.y2005.DOM.Node.ProcessingInstruction, feature, version, impl);
 };
-cx.fam.suika.y2005.DOM.Node.ProcessingInstruction.prototype.getDOMPI =
+cx.fam.suika.y2005.DOM.Node.getDOMPI =
 function (n) {
   if (!n) {
     return null;
@@ -1122,7 +1267,7 @@ cx.fam.suika.y2005.DOM.Node.ProcessingInstruction.prototype.toString = function 
 /* DocumentFragment */
 
 cx.fam.suika.y2005.DOM.Node.DocumentFragment = function (node) {
-  cx.fam.suika.y2005.DOM.Node.DocumentFragment._superclass.apply (this, [node]);
+  cx.fam.suika.y2005.DOM.Node.DocumentFragment._superclass.apply (this, arguments);
   for (var i in cx.fam.suika.y2005.DOM.Node.DocumentFragment._Constructor) {
     cx.fam.suika.y2005.DOM.Node.DocumentFragment._Constructor[i].apply
       (this, arguments);

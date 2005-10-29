@@ -1,3 +1,19 @@
+2005-10-29  Wakaba  <w@suika.fam.cx>
+
+	* Generic.js (createGLSParser): Implemented.
+	
+	* SimpleParser.js: XML end tag implemented.
+
+2005-10-28  Wakaba  <w@suika.fam.cx>
+
+	* SimpleSerializer.js (writeToString): Outputs XML declaration
+	if |document.xmlVersion| has value other than |1.1|.  Support
+	for |DOCUMENT_FRAGMENT_NODE| added.
+
+2005-10-27  Wakaba  <w@suika.fam.cx>
+
+	* SimpleParser.js: New script.
+
 2005-10-27  Wakaba  <w@suika.fam.cx>
 
 	* ChangeLog: New file.

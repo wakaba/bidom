@@ -22,6 +22,18 @@ JSAN.require ("cx.fam.suika.y2005.DOM.Implementation");
 cx.fam.suika.y2005.DOM.Implementation.DOMImplementation._AddFeature
   ("http://suika.fam.cx/~wakaba/archive/2004/dom/ls#generic.", "3.0", {
     createGLSParser: function (features) {
+      features = new cx.fam.suika.y2005.DOM.Implementation.Features (features);
+      for (var i in cx.fam.suika.y2005.LS.Generic._Parser) {
+        var se = cx.fam.suika.y2005.LS.Generic._Parser[i];
+        if (se.features.hasFeatures (features)) {
+          JSAN.require (se.moduleName);
+          return eval ("new " + se.className + " (this);");
+        }
+      }
+      JSAN.require ("cx.fam.suika.y2005.DOM.Core");
+      throw new cx.fam.suika.y2005.DOM.Core.DOMException
+                    (cx.fam.suika.y2005.DOM.Core.DOMException.NOT_SUPPORTED_ERR,
+                     'Features "' + features + '" are not supported');
     },
     createGLSSerializer: function (features) {
       features = new cx.fam.suika.y2005.DOM.Implementation.Features (features);
@@ -38,6 +50,17 @@ cx.fam.suika.y2005.DOM.Implementation.DOMImplementation._AddFeature
                      'Features "' + features + '" are not supported');
     }
   });
+
+if (typeof (cx.fam.suika.y2005.LS.Generic._Parser) == "undefined") {
+  cx.fam.suika.y2005.LS.Generic._Parser = [];
+}
+cx.fam.suika.y2005.LS.Generic._Parser.push ({
+  moduleName: /* ??JSANModule?? */ "cx.fam.suika.y2005.LS.SimpleParser",
+  className: "cx.fam.suika.y2005.LS.SimpleParser",
+  features: new cx.fam.suika.y2005.DOM.Implementation.Features (
+    "http://suika.fam.cx/www/cx/fam/suika/y2005/ls/simpleparser# 1.0"
+  )
+});
 
 if (typeof (cx.fam.suika.y2005.LS.Generic._Serializer) == "undefined") {
   cx.fam.suika.y2005.LS.Generic._Serializer = [];

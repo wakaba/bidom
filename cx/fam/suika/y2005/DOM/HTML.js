@@ -106,7 +106,8 @@ cx.fam.suika.y2005.DOM.HTML.SHTMLElement.prototype.getLocalName = function () {
   var ln = cx.fam.suika.y2005.DOM.HTML.SHTMLElement._super.getLocalName.apply
              (this, arguments);
   var ns = this.getNamespaceURI ();
-  if (ns == "http://www.w3.org/1999/xhtml") {
+  if (ns == "http://www.w3.org/1999/xhtml" &&
+      typeof (this._Node._LocalName) == "undefined") {
     return ln.toLowerCase ();
   } else {
     return ln;
@@ -115,7 +116,7 @@ cx.fam.suika.y2005.DOM.HTML.SHTMLElement.prototype.getLocalName = function () {
 cx.fam.suika.y2005.DOM.HTML.SHTMLElement.prototype.getNamespaceURI = function () {
   var ns = cx.fam.suika.y2005.DOM.HTML.SHTMLElement._super.getNamespaceURI.apply
              (this, arguments);
-  if (ns == null) {
+  if (ns == null && typeof (this._Node._NamespaceURI) == "undefined") {
     return "http://www.w3.org/1999/xhtml";
   } else {
     return ns;
@@ -196,17 +197,6 @@ cx.fam.suika.y2005.DOM.HTML.getSHTMLAttr = function (d) {
   return new cx.fam.suika.y2005.DOM.HTML.SHTMLAttr (d);
 };
 
-cx.fam.suika.y2005.DOM.HTML.SHTMLAttr.prototype.getLocalName = function () {
-  var ln = cx.fam.suika.y2005.DOM.HTML.SHTMLAttr._super.getLocalName.apply
-             (this, arguments);
-  var p = this.getOwnerElement ();
-  var ns = p ? p.getNamespaceURI () : null;
-  if (ns == "http://www.w3.org/1999/xhtml") {
-    return ln.toLowerCase ();
-  } else {
-    return ln;
-  }
-};
 cx.fam.suika.y2005.DOM.HTML.SHTMLAttr.prototype.getNamespaceURI = function () {
   var ns = cx.fam.suika.y2005.DOM.HTML.SHTMLAttr._super.getNamespaceURI.apply
              (this, arguments);

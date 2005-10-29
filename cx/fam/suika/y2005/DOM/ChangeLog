@@ -1,3 +1,13 @@
+2005-10-29  Wakaba  <w@suika.fam.cx>
+
+	* Node.js, HTML.js: A number of changes made to ensure 
+	compatibility with Gecko, Opera 8, and WinIE 6.
+
+2005-10-27  Wakaba  <w@suika.fam.cx>
+
+	* Node.js (xmlVersion, xmlEncoding, xmlStandalone): Implemented.
+	(getInnerHTML, getOuterHTML): Implemented using |../LS/SimpleSerializer.js|.
+
 2005-10-26  Wakaba  <w@suika.fam.cx>
 
 	* Node.js: Support for |HTML| module added.  Lots of DOM Core methods
