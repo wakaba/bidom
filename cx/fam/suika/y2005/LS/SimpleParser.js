@@ -114,12 +114,14 @@ function (pnode) {
     doc = pnode;
     isDoc = true;
   }
+  var isDocOriginal = isDoc;
   var elqn = [];
   var el = [];
   var ns = [];
   var current = pnode;
   var currentNS = {xml: "http://www.w3.org/XML/1998/namespace",
                    xmlns: "http://www.w3.org/2000/xmlns/"};
+  currentNS[""] = null;
   while (true) {
     var token = this._PopToken ();
     if (!token) {
@@ -170,7 +172,7 @@ function (pnode) {
         }
         var litType = token.type;
         var litVal = [];
-        this._LexType = "LIT";
+        this._LexMode = "LIT";
         while (true) {
           token = this._PopToken ();
           if (!token) {
@@ -248,7 +250,7 @@ function (pnode) {
         } else if (attrqname.substring (0, 6) == "xmlns:") {
           currentNS[attrqname.substring (6)] = nsuri.length > 0 ? nsuri : null;
         }
-        this._Lextype = "TAG";
+        this._LexMode = "TAG";
         token = this._PopToken ();
         if (token && token.type == "S") {
           token = this._PopToken ();
@@ -292,6 +294,8 @@ function (pnode) {
         currentNS = ns.pop ();
       } else if (!token || token.type != "tagc") {
         this._ParseError (token, {type: "tagc"});
+      } else {
+        isDoc = false;
       }
       this._LexMode = "CON";
     } else if (token.type == "etago") {
@@ -317,6 +321,7 @@ function (pnode) {
         this._ParseError (token, {type: "tagc"});
       }
       this._LexMode = "CON";
+      isDoc = isDocOriginal;
     } else if (token.type == "string") {
       if (isDoc) {
         if (token.value.match (/[^\x09\x0A\x0D\x20]/)) {
@@ -944,7 +949,7 @@ cx.fam.suika.y2005.LS.SimpleParser.prototype._PopToken = function () {
 };
 
 
-/* Revision: $Date: 2005/10/29 10:48:20 $ */
+/* Revision: $Date: 2005/10/30 05:14:42 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

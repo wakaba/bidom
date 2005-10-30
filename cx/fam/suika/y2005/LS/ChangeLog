@@ -1,3 +1,8 @@
+2005-10-30  Wakaba  <w@suika.fam.cx>
+
+	* SimpleParser.js (parseStringWithContext): Turns |isDoc| flag
+	off in elements.
+
 2005-10-29  Wakaba  <w@suika.fam.cx>
 
 	* Generic.js (createGLSParser): Implemented.

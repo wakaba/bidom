@@ -131,18 +131,37 @@ cx.fam.suika.y2005.DOM.HTML.SHTMLTextElement = function (node) {
 cx.fam.suika.y2005.DOM.HTML.SHTMLTextElement.inherits
   (cx.fam.suika.y2005.DOM.HTML.SHTMLElement);
 
+cx.fam.suika.y2005.DOM.HTML.SHTMLTextElement.prototype.appendChild =
+function (newChild) {
+  if (newChild.getNodeType () == newChild.TEXT_NODE) {
+    if (typeof (this._Node.text) == "undefined") {
+      this._Node.text = newChild.getTextContent ();
+      /* Note that this might make |title| element having a |text| attribute (!) */
+    } else {
+      this._Node.text += newChild.getTextContent ();
+    }
+    /* Note also that adding |text| of |script| would cause the WinIE engine
+       evaluate the script fragment */
+    return this.getLastChild ();
+  } else {
+    JSAN.require ("cx.fam.suika.y2005.DOM.Core");
+    throw new cx.fam.suika.y2005.DOM.Core.DOMException
+                    (cx.fam.suika.y2005.DOM.Core.DOMException.NOT_SUPPORTED_ERR,
+                     "Operation not allowed in WinIE");
+  }
+};
 cx.fam.suika.y2005.DOM.HTML.SHTMLTextElement.prototype.getChildNodes = function () {
   return new cx.fam.suika.y2005.DOM.HTML.SHTMLTextNodeList (this._Node);
 };
 cx.fam.suika.y2005.DOM.HTML.SHTMLTextElement.prototype.getFirstChild = function () {
-  if (this._Node.text.length > 0) {
+  if (this._Node.text && this._Node.text.length > 0) {
     return new cx.fam.suika.y2005.DOM.HTML.SHTMLTextNodeText (this._Node);
   } else {
     return null;
   }
 };
 cx.fam.suika.y2005.DOM.HTML.SHTMLTextElement.prototype.hasChildNodes = function () {
-  return (this._Node.text.length > 0 ? true : false);
+  return ((this._Node.text && this._Node.text.length > 0) ? true : false);
 };
 cx.fam.suika.y2005.DOM.HTML.SHTMLTextElement.prototype.getLastChild
   = cx.fam.suika.y2005.DOM.HTML.SHTMLTextElement.prototype.getFirstChild;
@@ -255,7 +274,7 @@ cx.fam.suika.y2005.DOM.HTML.SHTMLTextNodeList.inherits
   (cx.fam.suika.y2005.DOM.Node.NodeList);
 
 cx.fam.suika.y2005.DOM.HTML.SHTMLTextNodeList.prototype.item = function (n) {
-  if (this._Node.text.length > 0 && n == 0) {
+  if (this._Node.text && this._Node.text.length > 0 && n == 0) {
     return new cx.fam.suika.y2005.DOM.HTML.SHTMLTextNodeText (this._Node);
   } else {
     JSAN.require ("cx.fam.suika.y2005.DOM.Core");
@@ -265,7 +284,7 @@ cx.fam.suika.y2005.DOM.HTML.SHTMLTextNodeList.prototype.item = function (n) {
   }
 };
 cx.fam.suika.y2005.DOM.HTML.SHTMLTextNodeList.prototype.getLength = function () {
-  if (this._Node.text.length > 0) {
+  if (this._Node.text && this._Node.text.length > 0) {
     return 1;
   } else {
     return 0;

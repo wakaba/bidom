@@ -94,6 +94,11 @@ cx.fam.suika.y2005.DOM.Node._FeatureModule
 cx.fam.suika.y2005.DOM.Node._FeatureModule
 ["http://suika.fam.cx/www/cx/fam/suika/y2005/elementview/movable#"]["1.0"]
   = /* ??JSANModule?? */ "cx.fam.suika.y2005.ElementView.Movable";
+cx.fam.suika.y2005.DOM.Node._FeatureModule
+["http://suika.fam.cx/www/cx/fam/suika/y2005/webua/vdocument#"] = {};
+cx.fam.suika.y2005.DOM.Node._FeatureModule
+["http://suika.fam.cx/www/cx/fam/suika/y2005/webua/vdocument#"]["1.0"]
+  = /* ??JSANModule?? */ "cx.fam.suika.y2005.WebUA.VDocument";
 
 JSAN.require ("cx.fam.suika.y2005.Class.Inherit");
 
@@ -132,6 +137,8 @@ cx.fam.suika.y2005.DOM.Node.getDOMNode = function (n) {
     return null;
   } else if (n._GetDOMNode) {
     return n._GetDOMNode (n);
+  } else if (n._OwnerDocument && n._OwnerDocument._GetDOMNode) {
+    return n._OwnerDocument._GetDOMNode (n);
   } else if (n.ownerDocument && n.ownerDocument._GetDOMNode) {
     return n.ownerDocument._GetDOMNode (n);
   } else {
@@ -219,6 +226,7 @@ cx.fam.suika.y2005.DOM.Node.Node.prototype.insertBefore = function (c, r) {
   return cx.fam.suika.y2005.DOM.Node.getDOMNode
            (this._Node.insertBefore (c._Node, r._Node));
 };
+/* BUG: Does not work for e.g. AttrTextNode */
 cx.fam.suika.y2005.DOM.Node.Node.prototype.isSameNode = function (n) {
   return this._Node.isSameNode ? this._Node.isSameNode (n._Node)
                                : (this._Node == n._Node);
@@ -466,6 +474,20 @@ cx.fam.suika.y2005.DOM.Node.Document = function (node) {
           return new cx.fam.suika.y2005.DOM.Node.NSAttr (namespaceURI, qualifiedName);
         }
       };
+      cx.fam.suika.y2005.DOM.Node.Document.prototype.createElementNS =
+      function (namespaceURI, qualifiedName) {
+        var altQualifiedName = qualifiedName;
+        if (namespaceURI != "http://www.w3.org/1999/xhtml") {
+          /* Opera 8 ignores namespace URI for the purpose of e.g. |script|
+             or |href| evaluation */
+          altQualifiedName = "@" + qualifiedName;
+        }
+        var el = this._Node.createElementNS (namespaceURI, altQualifiedName);
+        el._NamespaceURI = namespaceURI;
+        var nm = qualifiedName.split (":", 2);
+        el._LocalName = nm[1] != null ? nm[1] : nm[0];
+        return cx.fam.suika.y2005.DOM.Node.getDOMElement (el);
+      };
     }
     if (!this._Node.createProcessingInstruction) {
       /* TODO: PI for WinIE and Gecko HTML mode */
@@ -520,9 +542,9 @@ function (namespaceURI, qualifiedName) {
   return cx.fam.suika.y2005.DOM.Node.getDOMElement (el);
 };
 cx.fam.suika.y2005.DOM.Node.Document.prototype.createEntityReference =
-function (target, data) {
+function (name) {
   return new cx.fam.suika.y2005.DOM.Node.getDOMNode
-           (this._Node.createEntityReference (target, data));
+           (this._Node.createEntityReference (name));
 };
 cx.fam.suika.y2005.DOM.Node.Document.prototype.createProcessingInstruction =
 function (target, data) {
@@ -676,6 +698,8 @@ cx.fam.suika.y2005.DOM.Node.Element = function (node) {
           return "className";
         case "className":
           return "@className";
+        case "style":
+          return "@style";
         default:
           return localName;
         }
@@ -724,11 +748,14 @@ function (feature, version, impl) {
   cx.fam.suika.y2005.DOM.Node._AddFeature
     (cx.fam.suika.y2005.DOM.Node.Element, feature, version, impl);
 };
+
 cx.fam.suika.y2005.DOM.Node.getDOMElement = function (n) {
   if (!n) {
     return null;
   } else if (n._GetDOMNode) {
     return n._GetDOMNode (n);
+  } else if (n._OwnerDocument && n._OwnerDocument._GetDOMNode) {
+    return n._OwnerDocument._GetDOMNode (n);
   } else if (n.ownerDocument && n.ownerDocument._GetDOMNode) {
     return n.ownerDocument._GetDOMNode (n);
   } else {
@@ -736,7 +763,31 @@ cx.fam.suika.y2005.DOM.Node.getDOMElement = function (n) {
   }
 };
 cx.fam.suika.y2005.DOM.Node._GetDOMElement = function (n) {
-  return new cx.fam.suika.y2005.DOM.Node.Element (n);
+  var ns = typeof (n._NamespaceURI) == "undefined"
+             ? n.namespaceURI
+             : n._NamespaceURI;
+  var ln = typeof (n._LocalName) == "undefined"
+             ? n.localName
+             : n._LocalName;
+  if (cx.fam.suika.y2005.DOM.Node.Element._ElementTypeClass[ns] != null &&
+      cx.fam.suika.y2005.DOM.Node.Element._ElementTypeClass[ns][ln] != null) {
+    JSAN.require
+      (cx.fam.suika.y2005.DOM.Node.Element._ElementTypeClass[ns][ln]["moduleName"]);
+    return eval ("new " + cx.fam.suika.y2005.DOM.Node.Element
+                 ._ElementTypeClass[ns][ln]["className"] + " (n)");
+  } else {
+    return new cx.fam.suika.y2005.DOM.Node.Element (n);
+  }
+};
+
+cx.fam.suika.y2005.DOM.Node.Element._ElementTypeClass = {};
+cx.fam.suika.y2005.DOM.Node.Element._ElementTypeClass[
+  "http://suika.fam.cx/www/cx/fam/suika/y2005/WebUA/VDocument#"
+] = {
+  VWindow: {
+    moduleName: /* ??JSANModule?? */ "cx.fam.suika.y2005.WebUA.VDocument",
+    className: "cx.fam.suika.y2005.WebUA.VDocument.VWindowElement"
+  }
 };
 
 cx.fam.suika.y2005.DOM.Node.Element.prototype.getAttributes = function () {
@@ -765,12 +816,14 @@ function (namespaceURI, qualifiedName, localName) {
 };
 cx.fam.suika.y2005.DOM.Node.Element.prototype.setAttributeNS =
 function (namespaceURI, qualifiedName, newValue) {
-  /*
   var attr = this.getOwnerDocument ().createAttributeNS (namespaceURI, qualifiedName);
   attr.setValue (newValue);
+  if (this._Node._OwnerDocument != null) {
+    attr._Node._OwnerDocument = this._Node._OwnerDocument;
+  }
   this._Node.setAttributeNodeNS (attr._Node);
-  _* NOTE: Opera 8's implementation is problematic. */
-  this._Node.setAttributeNS (namespaceURI, qualifiedName, newValue);
+  /* NOTE: Opera 8's implementation is problematic. */
+  /* this._Node.setAttributeNS (namespaceURI, qualifiedName, newValue); */
 };
 cx.fam.suika.y2005.DOM.Node.Element.prototype.getNodeName = function () {
   var prefix = this.getPrefix ();
@@ -846,6 +899,7 @@ cx.fam.suika.y2005.DOM.Node.Element.prototype._SetAttributeNSCompat =
           (namespaceURI == "http://www.w3.org/2000/xmlns/" &&
            qualifiedName == "xmlns")) {
         this._Node.setAttribute (this._ReplaceAttrName (qualifiedName), newValue);
+        /* TODO: Should |/attr/._Node._OwnerDocument| be set? */
       } else {
         if (!this._Node._Attribute[namespaceURI]) {
           this._Node._Attribute[namespaceURI] = {};
@@ -859,6 +913,8 @@ cx.fam.suika.y2005.DOM.Node.Element.prototype._SetAttributeNSCompat =
                          .createAttributeNS (namespaceURI, qualifiedName);
           this._Node._Attribute[namespaceURI][localName] = attr;
           attr._Node._OwnerElement = attr;
+          if (this._Node._OwnerDocument != null)
+            attr._Node._OwnerDocument = this._Node._OwnerDocument;
           attr.setValue (newValue);
         }
       }
@@ -1227,6 +1283,8 @@ function (n) {
     return null;
   } else if (n._GetDOMNode) {
     return n._GetDOMNode (n);
+  } else if (n._OwnerDocument && n._OwnerDocument._GetDOMNode) {
+    return n._OwnerDocument._GetDOMNode (n);
   } else if (n.ownerDocument && n.ownerDocument._GetDOMNode) {
     return n.ownerDocument._GetDOMNode (n);
   } else {

@@ -1,3 +1,15 @@
+2005-10-30  Wakaba  <w@suika.fam.cx>
+
+	* HTML.js (SHTMLTextElement.appendChild): Allows to append text node (only).
+	
+	* Node.js: Support for |WebUA.VDocument| module added.
+	(_GetDOMNode): Sees |_Node._OwnerDocument._GetDOMNode|.
+	(createElementNS): Inserts dummy charcter to local name
+	to avoid to be handled as if it is an HTML element in Opera.
+	(_ReplaceAttrName): |style| attribute is now saved as |@style|.
+	(_GetDOMElement): Uses element type specific class if available.
+	(setAttributeNS): Copies |_Node._OwnerDocument| property if available.
+
 2005-10-29  Wakaba  <w@suika.fam.cx>
 
 	* Node.js, HTML.js: A number of changes made to ensure 
