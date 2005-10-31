@@ -187,7 +187,7 @@ function (pnode) {
               this._ParseError (token, {type: type == "hero" ? "hexdecimal"
                                                              : "Number"});
             }
-            var code = (type == "hero" ? parseInt ("0x" + token.value)
+            var code = (type == "hero" ? parseInt (token.value, 16)
                                        : parseInt (token.value, 10));
             if (code < 0x10000) {
               litVal.push ({type: "AttValueText", value: String.fromCharCode (code)});
@@ -949,7 +949,7 @@ cx.fam.suika.y2005.LS.SimpleParser.prototype._PopToken = function () {
 };
 
 
-/* Revision: $Date: 2005/10/30 05:14:42 $ */
+/* Revision: $Date: 2005/10/31 00:54:29 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

@@ -61,6 +61,13 @@ cx.fam.suika.y2005.LS.Generic._Parser.push ({
     "http://suika.fam.cx/www/cx/fam/suika/y2005/ls/simpleparser# 1.0"
   )
 });
+cx.fam.suika.y2005.LS.Generic._Parser.push ({
+  moduleName: /* ??JSANModule?? */ "cx.fam.suika.y2005.CSS.SimpleParser",
+  className: "cx.fam.suika.y2005.CSS.SimpleParser",
+  features: new cx.fam.suika.y2005.DOM.Implementation.Features (
+    "http://suika.fam.cx/www/cx/fam/suika/y2005/css/simpleparser# 1.0"
+  )
+});
 
 if (typeof (cx.fam.suika.y2005.LS.Generic._Serializer) == "undefined") {
   cx.fam.suika.y2005.LS.Generic._Serializer = [];

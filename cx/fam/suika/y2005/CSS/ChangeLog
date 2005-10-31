@@ -1,3 +1,7 @@
 2005-10-31  Wakaba  <w@suika.fam.cx>
 
 	* ChangeLog: New file.
+
+2005-10-30  Wakaba  <w@suika.fam.cx>
+
+	* SimpleParser.js: New script (still work in progress).

@@ -1,5 +1,9 @@
 2005-10-30  Wakaba  <w@suika.fam.cx>
 
+	* Generic.js (_Parser): Information on |CSS/SimpleParser| module added.
+
+2005-10-30  Wakaba  <w@suika.fam.cx>
+
 	* SimpleParser.js (parseStringWithContext): Turns |isDoc| flag
 	off in elements.
 
