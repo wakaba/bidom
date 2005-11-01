@@ -14,9 +14,16 @@ if (typeof (cx.fam.suika.y2005.CSS) == "undefined") {
   cx.fam.suika.y2005.CSS = {};
 }
 
-cx.fam.suika.y2005.CSS.SimpleParser = function () {
+cx.fam.suika.y2005.CSS.SimpleParser = function (impl) {
+  this._Factory = impl;
 };
 
+/**
+   Parses a |DOMString| as an entire CSS style sheet (|stylesheet|)
+   and returns it as a |CSSStyleSheet| object.
+   
+   This parser will discard any ignored tokens if any.
+*/
 cx.fam.suika.y2005.CSS.SimpleParser.prototype.parseString =
 function (inputText) {
   this._String = inputText;
@@ -24,14 +31,8 @@ function (inputText) {
   this._CharStack = [];
   this._TokenStack = [];
   
-  while (true) {
-    var token = this._PopToken ();
-    if (token == null) break;
-    document.body.appendChild (document.createTextNode
-    ([token.type, token.value, token.value2].toString ()));
-    document.body.appendChild (document.createElement("br"));
-  }
-  alert(1);
+  JSAN.require ("cx.fam.suika.y2005.CSS.Node");
+  return this._ParseStyleSheet ();
 };
 
 /**
@@ -39,18 +40,29 @@ function (inputText) {
    and returns a |CSSStyleSheet| object.
 */
 cx.fam.suika.y2005.CSS.SimpleParser.prototype._ParseStyleSheet =
-function (factory) {
-  var ss = factory.createCSSStyleSheet ();
-  /* Whether a top-level |@import| rule should be ignored or not */
-  this._IgnoreImport = false;
+function () {
+  var ss = this._Factory.createCSSStyleSheet ();
+  
   /* Whether a top-level |@charset| rule should be ignored or not */
   /* this._IgnoreCharset = false; -- should be set by the callee of the method -- */
+  if (!this._IgnoreCharset) {
+    var ch = this._PopChar ();
+    if (ch != "@") {
+      this._IgnoreCharset = true;
+      /* |@charst| rule must be the first token in |stylesheet|. */
+    }
+    if (ch.length > 0) this._CharStack.push (ch);
+  }
+  
+  /* Whether a top-level |@import| rule should be ignored or not */
+  this._IgnoreImport = false;
+  
   S: while (true) {
-    var token = this._PopToken ();
+    var token = this._PopToken (false);
     if (!token) {
       break S;
     } else if (token.type == "ATKEYWORD") { /* at-rule */
-      this._ParseAtRule (factory, token, ss);
+      this._ParseAtRule (token, ss);
       if (token.value != "import" && token.value != "charset") {
         this._IgnoreImport = true;
       }
@@ -70,156 +82,147 @@ function (factory) {
   return ss;
 };
 
+/**
+   Parses an at-rule.
+*/
 cx.fam.suika.y2005.CSS.SimpleParser.prototype._ParseAtRule =
-function (factory, atToken, parentNode) {
-  var token = this._PopToken ();
-  while (token && token.type == "S") {
-    token = this._PopToken ();
+function (/* |ATKEYWORD| */ token, parentNode) {
+  var atType = token.value.toLowerCase ();
+  var parentType = parentNode.getCSSNodeType ();
+  var token = this._PopToken (false);
+  
+  if (atType == "import" &&
+      !this._IgnoreImport &&
+      parentType == parentNode.CSS_STYLE_SHEET_NODE) {
+    if (token && (token.type == "STRING" || token.type == "URI")) {
+      var uri = token.value;
+      token = this._PopToken (false);
+      
+      /* Media query (it might be empty) */
+      var mq = this._ParseMediaQuery ();
+      
+      if (token && token.type == ";") {
+        var ati = this._Factory.createCSSImportRule (uri, mq);
+        parentNode.appendCSSRule (ati);
+        
+        /* Skipping |S|s if any */
+        token = this._PopToken (false);
+        if (token != null) this._TokenStack.push (token);
+        return;
+      }
+    }
+  } else if (atType == "charset" &&
+             !this._IgnoreCharset &&
+             parentType == parentNode.CSS_STYLE_SHEET_NODE) {
+    if (token && token.type == "STRING") {
+      var charset = token.value;
+      token = this._PopToken (false);
+      if (token && token.type == ";") {
+        var atc = this._Factory.createCSSCharsetRule (charset);
+        parentNode.appendCSSRule (atc);
+        
+        /* Skipping |S|s if any */
+        token = this._PopToken (false);
+        if (token != null) this._TokenStack.push (token);
+        return;
+      }
+    }
   }
   
-  if (atToken.value == "import") {
-    /* TODO */
-    
-    if (!this._IgnoreImport &&
-        parentNode.cssNodeType == parentNode.cssNodeType.CSS_STYLE_SHEET_NODE) {
-    
-    } else {
-      /* Ignored */
-    }
-  } else if (atToken.value == "charset") {
-    /* TODO */
-    
-    if (!this._IgnoreCharset &&
-        parentNode.cssNodeType == parentNode.cssNodeType.CSS_STYLE_SHEET_NODE) {
-    
-    } else {
-      /* Ignored */
-    }
-  } else { /* unknown */
-    /* Skips |any|s */
-    ANY: while (token && (token.type != "{" && token.type != ";" &&
-                          token.type != "ATKEYWORD")) {
-      if (token.type == "[" || token.type == "(" || token.type == "FUNCTION") {
-        this._TokenStack.push (token);
-        this._SkipAnyEnclosed ();
-      } else {
-        token = this._PopToken ();
-      }
-    }
-    /* Skips a |block| if any */
-    if (token == null) {
-      /* WARNING: error */
-    } else if (token.type == "{") {
-      this._SkipAnyEnclosed ();
-    } else if (token.type == ";") {
-      token = this._PopToken ();
-    }
-    /* Skips |S| if any */
-    while (token && token.type == "S") {
-      token = this._PopToken ();
-    }
-    if (token != null) this._TokenStack.push (token);
-    
-    parentNode.appendCSSRule (factory.createCSSRule (atToken.value));
-  }
-};
-
-cx.fam.suika.y2005.CSS.SimpleParser.prototype._ParseRuleSet =
-function (factory, parentNode) {
-  /* Selector */
-  var sel = this._ParseSelector (factory);
-  if (sel != null) {
-    var token = this._PopToken ();
-    if (token && token.type == "{") {
-      var rs = factory.createCSSRuleSet (sel);
-      this._ParseDeclarationBlockContent (factory, rs);
-      token = this._PopToken ();
-      if (token && token.type == "}") {
-        token = this._PopToken ();
-        /* Skips |S| if any */
-        while (token && token.type == "S") {
-          token = this._PopToken ();
-        }
-        if (token != null) this._TokenStack.push (token);
-      } else {
-        /* Warning: error */
-      }
-    } else {
-      /* Warning: error */
-    }
-  } else { /* Selector is not supported */
-    var token = this._PopToken ();
-    /* Skips |any|s */
-    ANY: while (token && (token.type != "{" && token.type != ";" &&
-                          token.type != "ATKEYWORD")) {
-      if (token.type == "[" || token.type == "(" || token.type == "FUNCTION") {
-        this._TokenStack.push (token);
-        this._SkipAnyEnclosed ();
-      } else {
-        token = this._PopToken ();
-      }
-    }
-    if (token && token.type == "{") {
+  /* Skips |any|s */
+  ANY: while (token && (token.type != "{" && token.type != ";" &&
+                        token.type != "ATKEYWORD")) {
+    if (token.type == "[" || token.type == "(" || token.type == "FUNCTION") {
       this._TokenStack.push (token);
       this._SkipAnyEnclosed ();
     } else {
-      /* Warning: error */
+      token = this._PopToken (false);
     }
+  }
+  /* Skips a |block| if any */
+  if (token == null) {
+    /* WARNING: error */
+  } else if (token.type == "{") {
+    this._SkipAnyEnclosed ();
+  } else if (token.type == ";") {
+    token = this._PopToken ();
+  }
+  /* Skips |S| if any */
+  token = this._PopToken (false);
+  if (token != null) this._TokenStack.push (token);
+};
+
+/**
+   Parses a rule set.
+*/
+cx.fam.suika.y2005.CSS.SimpleParser.prototype._ParseRuleSet =
+function (parentNode) {
+  /* Selector */
+  var sel = this._ParseSelectors ();
+  var token = this._PopToken (false);
+  if (sel != null) {
+    if (token && token.type == "{") {
+      var rs = this._Factory.createCSSRuleSet (sel);
+      this._ParseDeclarationBlockContent (rs);
+      token = this._PopToken (false);
+      if (token && token.type == "}") {
+        /* Skips |S| if any */
+        token = this._PopToken (false);
+        if (token != null) this._TokenStack.push (token);
+        return;
+      }
+    }
+  }
+  
+  /* Skips |any|s */
+  ANY: while (token && (token.type != "{" && token.type != ";" &&
+                        token.type != "ATKEYWORD")) {
+    if (token.type == "[" || token.type == "(" || token.type == "FUNCTION") {
+      this._TokenStack.push (token);
+      this._SkipAnyEnclosed ();
+    } else {
+      token = this._PopToken (false);
+    }
+  }
+  if (token && token.type == "{") {
+    this._TokenStack.push (token);
+    this._SkipAnyEnclosed ();
+  } else {
+    /* Warning: error */
   }
 };
 
+/**
+   Parses the content of a declaration block.
+*/
 cx.fam.suika.y2005.CSS.SimpleParser.prototype._ParseDeclarationBlockContent =
-function (factory, parentNode) {
-  var token = this._PopToken ();
-  /* Skips |S| if any */
-  while (token && token.type == "S") {
-    token = this._PopToken ();
-  }
+function (parentNode) {
+  var token = this._PopToken (false);
   
   D: while (token && (token.type == "IDENT" || token.type == "DELIM")) {
     if (token.type == "IDENT") {
       var prop = this._ExpandNamespacedIdent (parentNode, token.value);
-      token = this._PopToken ();
-      /* Skips |S| if any */
-      while (token && token.type == "S") {
-        token = this._PopToken ();
-      }
+      token = this._PopToken (false);
       if (token && token.type == ":") {
-        token = this._PopToken ();
-        /* Skips |S| if any */
-        while (token && token.type == "S") {
-          token = this._PopToken ();
-        }
+        token = this._PopToken (false);
         var pp = this._PropertyValueParser[prop.namespaceURI][prop.localName];
         if (pp != null) {
           this._TokenStack.push (token);
-          pp.apply (this, [factory, parentNode, prop]);
+          pp.apply (this, [parentNode, prop]);
             /* |pp| should not add a (valid) node if
                the next token is different from |}|, |;|, or the end of the input */
           token = this._PopToken ();
           if (!token) {
             return;
           } else if (token.type == ";") {
-            token = this._PopToken ();
-            /* Skips |S| if any */
-            while (token && token.type == "S") {
-              token = this._PopToken ();
-            }
+            token = this._PopToken (false);
             continue D;
           } else if (token.type == "}") {
             this._TokenStack.push (token);
             return;
-          } else {
-            /* Unsupported property value -- skip until |;| */
           }
-        } else {
-          /* Unsupported property -- skip until |;| */
         }
-      } else {
-        /* Invalid declaration -- skip until |;| */
       }
-    } else { /* |DELIM| -- skip until |;| */
-      //
     }
     
     /* Skips |any|s */
@@ -228,48 +231,55 @@ function (factory, parentNode) {
           token.type == "(" || token.type == "FUNCTION") {
         this._TokenStack.push (token);
         this._SkipAnyEnclosed ();
+      } else if (token.type == ";") {
+        token = this._PopToken (false);
+        continue D;
       } else if (token.type == "}") {
         this._TokenStack.push (token);
         return;
       } else {
-        token = this._PopToken ();
+        token = this._PopToken (false);
       }
     }
-  } /* A declaration */
+  } /* D */
 };
 
+/* A set of property value parsers */
 cx.fam.suika.y2005.CSS.SimpleParser.prototype._PropertyValueParser = {};
 
+/**
+   Parses and returns the next value, if any, or |null|.
+*/
 cx.fam.suika.y2005.CSS.SimpleParser.prototype._GetNextValue =
-function (factory, /* NS & [base URI] */ context, token) {
-  if (token == null) token = this._PopToken ();
+function (/* NS & [base URI] */ context, token) {
+  if (token == null) token = this._PopToken (false);
   if (token == null) {
     return null;
   } else if (token.type == "DIMENSION") { /* <length> */
     var unit = this._ExpandNamespacedIdent (context, token.value2);
-    var val = factory.createCSSUnitValueNS
+    var val = this._Factory.createCSSUnitValueNS
                 (token.value, unit.namespaceURI, unit.localName);
     val.setPrefix (unit.prefix);
     return val;
   } else if (token.type == "PERCENTAGE") { /* <percentage> */
-    return factory.createCSSUnitValue (token.value, "%");
+    return this._Factory.createCSSUnitValue (token.value, "%");
   } else if (token.type == "NUMBER") { /* <number> or zero <length> */
-    return token.isFloat ? factory.createCSSNumberValue (token.value)
-                         : factory.createCSSIntegerValue (token.value);
+    return token.isFloat ? this._Factory.createCSSNumberValue (token.value)
+                         : this._Factory.createCSSIntegerValue (token.value);
   } else if (token.type == "IDENT") {
     var v = this._ExpandNamespacedIdent (context, token.value);
-    var val = factory.createCSSIdentNS (v.namespaceURI, v.localName);
+    var val = this._Factory.createCSSIdentValueNS (v.namespaceURI, v.localName);
     val.setPrefix (v.prefix);
     return val;
   } else if (token.type == "URI") {
-    return factory.createCSSURIFunction (token.value, context.getBaseURI ());
+    return this._Factory.createCSSURIValue (token.value, context.getBaseURI ());
   } else if (token.type == "FUNCTION") {
     var fname = token.value.toLowerCase ();
     if (fname == "rgb") {
       
     }
   } else if (token.type == "STRING") {
-    return factory.createCSSString (token.value);
+    return this._Factory.createCSSStringValue (token.value);
   } else if (token.type == "DELIM") {
     if (token.value == "-" || token.value == "+") {
       var token2 = this._PopToken ();
@@ -277,38 +287,32 @@ function (factory, /* NS & [base URI] */ context, token) {
         this._TokenStack.push (token2);
       } else if (token2.type == "NUMBER") { /* <number> or zero <length> */
         if (token.value == "-") token2.value *= -1;
-        return token.isFloat ? factory.createCSSNumberValue (token2.value)
-                             : factory.createCSSIntegerValue (token2.value);
+        return token.isFloat ? this._Factory.createCSSNumberValue (token2.value)
+                             : this._Factory.createCSSIntegerValue (token2.value);
       } else {
         this._TokenStack.push (token2);
       }
     }
   } else if (token.type == "HASH") {
     if (token.value.match (/^[0-9A-Fa-f]{6}$/)) {
-      return factory.createCSSRGBFunction (parseInt (token.value.slice (0, 2), 16),
-                                           parseInt (token.value.slice (2, 2), 16),
-                                           parseInt (token.value.slice (4, 2), 16));
+      return this._Factory.createCSSRGBValue (parseInt (token.value.slice (0, 2), 16),
+                                              parseInt (token.value.slice (2, 2), 16),
+                                              parseInt (token.value.slice (4, 2), 16));
     } else if (token.value.match (/^[0-9A-Fa-f]{3}$/)) {
-      return factory.createCSSRGBFunction (parseInt (token.value.slice (0, 1), 16),
-                                           parseInt (token.value.slice (1, 1), 16),
-                                           parseInt (token.value.slice (2, 1), 16));
+      return this._Factory.createCSSRGBValue (parseInt (token.value.slice (0, 1), 16),
+                                              parseInt (token.value.slice (1, 1), 16),
+                                              parseInt (token.value.slice (2, 1), 16));
     }
-  } else if (token.type == "INVALID") {
-    var token2 = this._PopToken ();
-    if (token2 == null) {
-      /* The CSS forward compatible parsing rule defines that the broken
-         string literal at the end of the entity should be interpreted
-         as if a string literal */
-      return factory.createCSSString (token2.value);
-    }
-    this._TokenStack.push (token2);
   }
   this._TokenStack.push (token);
   return null;
 };
 
-/*
-  [non-standard]
+/**
+   Expands an identifier (|ident|) into a triplet of namespace URI,
+   namespace prefix, and local name.
+   
+   Note that namespace extension to identifiers is a non-standard feature.
 */
 cx.fam.suika.y2005.CSS.SimpleParser.prototype._ExpandNamespacedIdent =
 function (nsContext, ident) {
@@ -325,14 +329,28 @@ function (nsContext, ident) {
           localName: ident.toLowerCase (), prefix: null};
 };
 
-cx.fam.suika.y2005.CSS.SimpleParser.prototype._ParseSelector =
-function (factory) {
+/**
+   Parses a selector and returns it as a |SSelectorList| object.
+*/
+cx.fam.suika.y2005.CSS.SimpleParser.prototype._ParseSelectors =
+function () {
   
 };
 
+/**
+   Parses a media query and returns it as a |MQQuery| object.
+*/
+cx.fam.suika.y2005.CSS.SimpleParser.prototype._ParseMediaQuery =
+function () {
+  
+};
+
+/**
+   Skips any tokens enclosed by a pair of braces.
+*/
 cx.fam.suika.y2005.CSS.SimpleParser.prototype._SkipAnyEnclosed = function () {
   var pair = [];
-  var token = this._PopToken ();
+  var token = this._PopToken (false);
   T: while (token) {
     if (token.type == "{" || token.type == "[" ||
         token.type == "(" || token.type == "FUNCTION") {
@@ -351,20 +369,28 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._SkipAnyEnclosed = function () {
         /* WARNING: Unmatched! */
       }
     }
-    token = this._PopToken ();
+    token = this._PopToken (false);
   } /* T */
   if (pair.length > 0) {
     /* WARNING: Unmatched! */
   }
   /* Skips |S| if any */
-  while (token && token.type == "S") {
-    token = this._PopToken ();
-  }
+  token = this._PopToken (false);
   if (token != null) this._TokenStack.push (token);
 };
 
-cx.fam.suika.y2005.CSS.SimpleParser.prototype._PopToken = function () {
+/**
+   Pops the next token, if any, or returns |null|.
+   
+   @param Ssignificant If |false|, any |S| token is ignored.  Otherwise,
+                       an |S| token is returned as well as other kind of
+                       tokens.
+*/
+cx.fam.suika.y2005.CSS.SimpleParser.prototype._PopToken = function (Ssignificant) {
   var nextToken = this._TokenStack.pop ();
+  while (!Ssignificant && nextToken != null && nextToken.type == "S") {
+    nextToken = this._TokenStack.pop ();
+  }
   if (nextToken) {
     return nextToken;
   }
@@ -645,7 +671,11 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._PopToken = function () {
           break S;
         }
       }
-      return {type: "S"};
+      if (Ssignificant) {
+        return {type: "S"};
+      } else {
+        continue X;
+      }
     } else if (ch == "-") {
       var ch2 = this._PopChar ();
       if (ch2.match (/^[_a-zA-Z\\]/) || ch2.charCodeAt (0) > 0x007F) {
@@ -748,8 +778,12 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._PopToken = function () {
             this._CharStack.push (ch2);
             return {type: "INVALID", value: text};
           }
+        } else if (ch2.length == 0) {
+          /* Note that an |INVALID| at the end of the entity is
+             treated as if it is a |STRING| by the error handling rule. */
+          return {type: "STRING", value: text};
         } else {
-          if (ch2.length > 0) this._CharStack.push (ch2);
+          this._CharStack.push (ch2);
           return {type: "INVALID", value: text};
         }
       } /* Q */
@@ -817,6 +851,15 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._PopToken = function () {
   return null;
 };
 
+/**
+   Unescapes the next escaped sequence.  If the next characters
+   are not a sequence expected after the |\| that introduces an escape
+   sequence, then an empty string is returned.
+   
+   @param allowNL If |true|, a line break sequence is accepted as
+                  an escaped sequence.  Otherwise, such sequence will
+                  result in returning an empty string.
+*/
 cx.fam.suika.y2005.CSS.SimpleParser.prototype._GetUnescapedChar =
 function (allowNL) {
   /* Introducing |REVERSE SOLIDUS| character is already read */
@@ -880,6 +923,9 @@ function (allowNL) {
   }
 };
 
+/**
+   Pops the next character.
+*/
 cx.fam.suika.y2005.CSS.SimpleParser.prototype._PopChar = function () {
   var nextChar = this._CharStack.pop ();
   if (nextChar) {
@@ -903,7 +949,7 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._PopChar = function () {
   return ch;
 };
 
-/* Revision: $Date: 2005/10/31 00:54:29 $ */
+/* Revision: $Date: 2005/11/01 10:32:14 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

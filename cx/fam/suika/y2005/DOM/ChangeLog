@@ -1,3 +1,7 @@
+2005-10-31  Wakaba  <w@suika.fam.cx>
+
+	* Implementation.js (_FeatureModule): Reference to |CSS.Node| module added.
+
 2005-10-30  Wakaba  <w@suika.fam.cx>
 
 	* HTML.js (SHTMLTextElement.appendChild): Allows to append text node (only).

@@ -1,3 +1,12 @@
+2005-11-01  Wakaba  <w@suika.fam.cx>
+
+	* SimpleParser.js: Parameters |factory| are removed
+	and now |this._Factory| property is used to create nodes.
+
+2005-10-31  Wakaba  <w@suika.fam.cx>
+
+	* Node.js, Selectors.js: New files.
+
 2005-10-31  Wakaba  <w@suika.fam.cx>
 
 	* ChangeLog: New file.

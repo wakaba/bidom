@@ -70,6 +70,11 @@ cx.fam.suika.y2005.DOM.Implementation._FeatureModule
 cx.fam.suika.y2005.DOM.Implementation._FeatureModule
 ["http://suika.fam.cx/~wakaba/archive/2004/dom/ls#generic."]["3.0"]
   = /* ??JSANModule?? */ "cx.fam.suika.y2005.LS.Generic";
+cx.fam.suika.y2005.DOM.Implementation._FeatureModule
+["http://suika.fam.cx/www/cx/fam/suika/y2005/css/node#"] = {};
+cx.fam.suika.y2005.DOM.Implementation._FeatureModule
+["http://suika.fam.cx/www/cx/fam/suika/y2005/css/node#"]["1.0"]
+  = /* ??JSANModule?? */ "cx.fam.suika.y2005.CSS.Node";
   
 /* DOMImplementation */
 
