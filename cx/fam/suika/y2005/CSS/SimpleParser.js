@@ -30,6 +30,7 @@ function (inputText) {
   this._CurrentCharPos = 0;
   this._CharStack = [];
   this._TokenStack = [];
+  this._IgnoreCharset = false;
   
   JSAN.require ("cx.fam.suika.y2005.CSS.Node");
   return this._ParseStyleSheet ();
@@ -57,6 +58,9 @@ function () {
   /* Whether a top-level |@import| rule should be ignored or not */
   this._IgnoreImport = false;
   
+  /* Whether a top-level |@namespace| rule should be ignored or not */
+  this._IgnoreNamespace = false;
+  
   S: while (true) {
     var token = this._PopToken (false);
     if (!token) {
@@ -65,6 +69,7 @@ function () {
       this._ParseAtRule (token, ss);
       if (token.value != "import" && token.value != "charset") {
         this._IgnoreImport = true;
+        if (token.value != "namespace") this._IgnoreNamespace = true;
       }
       this._IgnoreCharset = true;
     } else if (token.type == "S" || token.type == "CDO" || token.type == "CDC") {
@@ -75,6 +80,7 @@ function () {
     } else { /* rule set */
       this._TokenStack.push (token);
       this._ParseRuleSet (ss);
+      this._IgnoreNamespace = true;
       this._IgnoreImport = true;
       this._IgnoreCharset = true;
     }
@@ -91,9 +97,31 @@ function (/* |ATKEYWORD| */ token, parentNode) {
   var parentType = parentNode.getCSSNodeType ();
   var token = this._PopToken (false);
   
-  if (atType == "import" &&
-      !this._IgnoreImport &&
+  if (atType == "namespace" &&
+      !this._IgnoreNamespace &&
       parentType == parentNode.CSS_STYLE_SHEET_NODE) {
+    var prefix = null;
+    if (token && token.type == "IDENT") {
+      prefix = token.value;
+      token = this._PopToken (false);
+    }
+    
+    if (token && (token.type == "STRING" || token.type == "URI")) {
+      var uri = token.value;
+      token = this._PopToken (false);
+      if (token && token.type == ";") {
+        var ati = this._Factory.createCSSNamespaceRule (prefix, uri);
+        parentNode.appendCSSRule (ati);
+        
+        /* Skipping |S|s if any */
+        token = this._PopToken (false);
+        if (token != null) this._TokenStack.push (token);
+        return;
+      }
+    }
+  } else if (atType == "import" &&
+             !this._IgnoreImport &&
+             parentType == parentNode.CSS_STYLE_SHEET_NODE) {
     if (token && (token.type == "STRING" || token.type == "URI")) {
       var uri = token.value;
       token = this._PopToken (false);
@@ -143,12 +171,12 @@ function (/* |ATKEYWORD| */ token, parentNode) {
   if (token == null) {
     /* WARNING: error */
   } else if (token.type == "{") {
+    this._TokenStack.push (token);
     this._SkipAnyEnclosed ();
+    token = this._PopToken (false); /* Skips |S| if any */
   } else if (token.type == ";") {
-    token = this._PopToken ();
+    token = this._PopToken (false); /* Skips |S| if any */
   }
-  /* Skips |S| if any */
-  token = this._PopToken (false);
   if (token != null) this._TokenStack.push (token);
 };
 
@@ -158,7 +186,7 @@ function (/* |ATKEYWORD| */ token, parentNode) {
 cx.fam.suika.y2005.CSS.SimpleParser.prototype._ParseRuleSet =
 function (parentNode) {
   /* Selector */
-  var sel = this._ParseSelectors ();
+  var sel = this._ParseSelectors (parentNode);
   var token = this._PopToken (false);
   if (sel != null) {
     if (token && token.type == "{") {
@@ -333,15 +361,69 @@ function (nsContext, ident) {
    Parses a selector and returns it as a |SSelectorList| object.
 */
 cx.fam.suika.y2005.CSS.SimpleParser.prototype._ParseSelectors =
-function () {
+function (nsContext) {
   
 };
+
+/*
+  selectors-group              := selector *("," *S selector)
+  selector                     := simple-selector-sequence
+                                  *(combinator simple-selector-sequence)
+                                  pseudo-elements *S
+  simple-selector-sequence     := [type-selector / universal-selector]
+                                  1*(simple-selector - type-selector
+                                     - universal-selector) /
+                                  type-selector / universal-selector
+  simple-selector              := type-selector /
+                                  universal-selector /
+                                  attribute-selector /
+                                  class-selector /
+                                  ID-selector /
+                                  content-selector /
+                                  pseudo-class
+  type-selector                := [namespace] element-name
+  element-name                 := IDENT
+  namespace                    := [namespace-prefix] "|"
+  namespace-prefix             := IDENT / "*"
+  universal-selector           := [namespace] "*"
+  attribute-selector           := "[" *S [namespace] attribute-name *S
+                                  [attribute-match *S attribute-value] *S "]"
+  attribute-name               := IDENT
+  attribute-match              := "=" / INCLUDES / DASHMATCH /
+                                  PREFIXMATCH / SUFFIXMATCH / SUBSTRINGMATCH
+  attribute-value              := IDENT / STRING
+  class-selector               := "." IDENT
+  ID-selector                  := HASH
+  pseudo-class                 := ":" IDENT / functional-pseudo-class
+  functional-pseudo-class      := ":" FUNCTION *S pseudo-class-value *S ")"
+  pseudo-class-value           := IDENT / STRING / NUMBER / expression / negation-arg
+  expression                   := ["-" / INTEGER] "n" [SIGNED_INTEGER] / INTEGER
+  negation-arg                 := simple-selector
+  pseudo-elements              := [structural-pseudo-elements]
+                                  [formatting-pseudo-element]
+  structural-pseudo-elements   := *(["::outside" ["(" integer ")"]]
+                                    ("::before" ["(" integer ")"] / ":before" /
+                                     "::after" ["(" integer ")"] / ":after" /
+                                     "::alternate")
+                                    ["::outside" ["(" integer ")"]])
+  formatting-pseudo-element    := "::first-line" / ":first-line" /
+                                  "::first-letter" / ":first-letter" /
+                                  "::marker" /
+                                  "::line-marker" /
+                                  "::selection"
+  combinator                   := 1*S / *S (">" / "+" / "~") *S
+  S                            := <SPACE> /
+                                  <HORIZONTAL TABULATOR> /
+                                  <LINE FEED> /
+                                  <CARRIAGE RETURN> /
+                                  <FORM FEED>
+*/
 
 /**
    Parses a media query and returns it as a |MQQuery| object.
 */
 cx.fam.suika.y2005.CSS.SimpleParser.prototype._ParseMediaQuery =
-function () {
+function (nsContext) {
   
 };
 
@@ -949,7 +1031,7 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._PopChar = function () {
   return ch;
 };
 
-/* Revision: $Date: 2005/11/01 10:32:14 $ */
+/* Revision: $Date: 2005/11/01 14:27:47 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

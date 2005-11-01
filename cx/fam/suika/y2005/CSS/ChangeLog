@@ -1,5 +1,16 @@
 2005-11-01  Wakaba  <w@suika.fam.cx>
 
+	* Node.js: |@namespace| rule support added.
+	(cssNodeType, type): Implemented.
+	(lookupNamespaceURI): New method.
+	(CSSImportRule.cssText, CSSCharsetRule.cssText): Use double
+	quotation mark to quote string.
+	
+	* SimpleParser.js (_ParseAtRule): |@namespace| rule support added.
+	(_ParseSelectors, _ParseMediaQuery): |nsContext| parameter added.
+
+2005-11-01  Wakaba  <w@suika.fam.cx>
+
 	* SimpleParser.js: Parameters |factory| are removed
 	and now |this._Factory| property is used to create nodes.
 
