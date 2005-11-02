@@ -1,3 +1,15 @@
+2005-11-02  Wakaba  <w@suika.fam.cx>
+
+	* Value.js: New script.
+	
+	* Node.js (createPropertyNS): Parameters |prefix| and |value| added.
+	(cssText): Identifiers are escaped if necessary.  Don't escape 
+	|LINE FEED| character in |CRLF| sequences in string literals.
+	(baseURI): New attribute.
+	(priority): New attribute.
+	
+	* Selectors.js: Implemented.
+
 2005-11-01  Wakaba  <w@suika.fam.cx>
 
 	* Node.js: |@namespace| rule support added.

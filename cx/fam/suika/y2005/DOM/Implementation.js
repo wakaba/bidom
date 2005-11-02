@@ -75,6 +75,16 @@ cx.fam.suika.y2005.DOM.Implementation._FeatureModule
 cx.fam.suika.y2005.DOM.Implementation._FeatureModule
 ["http://suika.fam.cx/www/cx/fam/suika/y2005/css/node#"]["1.0"]
   = /* ??JSANModule?? */ "cx.fam.suika.y2005.CSS.Node";
+cx.fam.suika.y2005.DOM.Implementation._FeatureModule
+["http://suika.fam.cx/www/cx/fam/suika/y2005/css/selectors#"] = {};
+cx.fam.suika.y2005.DOM.Implementation._FeatureModule
+["http://suika.fam.cx/www/cx/fam/suika/y2005/css/selectors#"]["1.0"]
+  = /* ??JSANModule?? */ "cx.fam.suika.y2005.CSS.Selectors";
+cx.fam.suika.y2005.DOM.Implementation._FeatureModule
+["http://suika.fam.cx/www/cx/fam/suika/y2005/css/value#"] = {};
+cx.fam.suika.y2005.DOM.Implementation._FeatureModule
+["http://suika.fam.cx/www/cx/fam/suika/y2005/css/value#"]["1.0"]
+  = /* ??JSANModule?? */ "cx.fam.suika.y2005.CSS.Value";
   
 /* DOMImplementation */
 

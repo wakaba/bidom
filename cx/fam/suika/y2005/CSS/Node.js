@@ -19,7 +19,8 @@ if (typeof (cx.fam.suika.y2005.CSS.Node) == "undefined") {
 
 JSAN.require ("cx.fam.suika.y2005.Class.Inherit");
 JSAN.require ("cx.fam.suika.y2005.DOM.Implementation");
-//JSAN.require ("cx.fam.suika.y2005.CSS.Selectors");
+JSAN.require ("cx.fam.suika.y2005.CSS.Selectors");
+JSAN.require ("cx.fam.suika.y2005.CSS.Value");
 //JSAN.require ("cx.fam.suika.y2005.CSS.MediaQuery");
 
 /**
@@ -91,16 +92,20 @@ cx.fam.suika.y2005.DOM.Implementation.DOMImplementation._AddFeature
        [non-standard]
     */
     createCSSRuleSet: function (selector) {
-      var rs = new cx.fam.suika.y2005.CSS.Node.RuleSet ();
-      if (selector != null) rs.SetSelector (rs);
-      return rs;
+      return new cx.fam.suika.y2005.CSS.Node.RuleSet (selector);
     },
     /**
        Creates a CSS property declaration object.
        [non-standard]
+       
+       @param namespaceURI  The namespace URI of the property.
+       @param prefix        The namespace prefix of the property, if any, or |null|.
+       @param localName     The local name of the property.
+       @param value         The value of the property.
     */
-    createCSSPropertyNS: function (namespaceURI, localName) {
-      return new cx.fam.suika.y2005.CSS.Node.PropertyDeclaration (namespaceURI, lname);
+    createCSSPropertyNS: function (namespaceURI, prefix, localName, value) {
+      return new cx.fam.suika.y2005.CSS.Node.PropertyDeclaration
+                   (namespaceURI, prefix, localName, value);
     }
   });
 
@@ -108,6 +113,18 @@ cx.fam.suika.y2005.DOM.Implementation.DOMImplementation._AddFeature
    Constructs a new instance of |CSSNode| - for internal use.
 */
 cx.fam.suika.y2005.CSS.Node.Node = function () {
+};
+
+/**
+   The base URI, if available, or |null|.
+*/
+cx.fam.suika.y2005.CSS.Node.Node.prototype.getBaseURI =
+function () {
+  if (this.parentRule) {
+    return this.parentRule.getBaseURI ();
+  } else {
+    return null;
+  }
 };
 
 cx.fam.suika.y2005.CSS.Node.Node.prototype.getCSSNodeType = function () {
@@ -155,6 +172,12 @@ function (prefix) {
   }
 };
 
+/**
+   Escapes a string as an |IDENT|.
+*/
+cx.fam.suika.y2005.CSS.Node.Node.prototype._EscapeIdent =
+  cx.fam.suika.y2005.CSS.Value._EscapeIdent;
+
 cx.fam.suika.y2005.CSS.Node.Node.prototype.toString = function () {
   return "[object CSSNode]";
 };
@@ -170,7 +193,7 @@ cx.fam.suika.y2005.CSS.Node.StyleSheet = function () {
   this.cssRules = new cx.fam.suika.y2005.CSS.RuleList ();
 };
 cx.fam.suika.y2005.CSS.Node.StyleSheet.inherits (cx.fam.suika.y2005.CSS.Node.Node);
-cx.fam.suika.y2005.CSS.Node.StyleSheet.prototype.getCSSNodeType = {
+cx.fam.suika.y2005.CSS.Node.StyleSheet.prototype.getCSSNodeType = function () {
   return cx.fam.suika.y2005.CSS.Node.Node.prototype.CSS_STYLE_SHEET_NODE;
 };
 
@@ -182,6 +205,23 @@ cx.fam.suika.y2005.CSS.Node.StyleSheet.prototype.appendCSSRule = function (newRu
   /* There should be |HIERARCHY_REQUEST_ERR|. */
   newRule._SetParentRule (this);
   return this.cssRules.push (newRule);
+};
+
+/**
+   The base URI of the style sheet.  If it is not explicitly set,
+   then |href| is the base URI.  If |href| is not defined neither,
+   then |null|.
+   [non-standard]
+*/
+cx.fam.suika.y2005.CSS.Node.StyleSheet.prototype.getBaseURI = function () {
+  if (this.baseURI != null) {
+    return this.baseURI;
+  } else {
+    return this.href;
+  }
+};
+cx.fam.suika.y2005.CSS.Node.StyleSheet.prototype._SetBaseURI = function (newValue) {
+  this.baseURI = newValue;
 };
 
 /**
@@ -201,7 +241,7 @@ cx.fam.suika.y2005.CSS.Node.StyleSheet.prototype.getCSSText = function () {
   var lastType = this.CSS_UNKNOWN_RULE_NODE;
   for (var i = 0; i < this.cssRules.length; i++) {
     var rule = this.cssRules[i];
-    if (lastType == this.CSS_RULE_SET_NODE &&
+    if (lastType == this.CSS_RULE_SET_NODE ||
         rule.getCSSNodeType () == this.CSS_RULE_SET_NODE) {
       r += "\n";
     }
@@ -249,19 +289,19 @@ cx.fam.suika.y2005.CSS.Node.StyleSheet.prototype._SetHref = function (newValue) 
 */
 cx.fam.suika.y2005.CSS.Node.StyleSheet.prototype.lookupNamespaceURI =
 function (prefix) {
-  prefix = prefix.toLowerCase ();
+  if (prefix != null) prefix = prefix.toLowerCase ();
   var uri = null;
   for (var i = 0; i < this.cssRules.length; i++) {
     var rule = this.cssRules[i];
     var ruleType = rule.getType ();
-    if (ruleType == this.NAMESPACE_RULE) {
+    if (ruleType == rule.NAMESPACE_RULE) {
       if (rule.getPrefix () == prefix) {
         uri = rule.getNamespaceURI ();
       }
       /* Don't |break|, since last occurence is in effect if there is 
          more than one declarations. */
-    } else if (ruleType != this.CHARSET_RULE &&
-               ruleType != this.IMPORT_RULE) {
+    } else if (ruleType != rule.CHARSET_RULE &&
+               ruleType != rule.IMPORT_RULE) {
       break;
     }
   }
@@ -344,7 +384,7 @@ cx.fam.suika.y2005.CSS.Node.Rule.prototype.appendCSSRule
 */
 cx.fam.suika.y2005.CSS.Node.Rule.prototype.getCSSText =
 function () {
-  return "@" + this.getRuleName () + ";\n";
+  return "@" + this._EscapeIdent (this.getRuleName ()) + ";\n";
 };
 /* Not implemented: |setCSSText| from DOM Level 2 CSS */
 
@@ -466,10 +506,10 @@ cx.fam.suika.y2005.CSS.Node.MediaRule = function (mq) {
   }
 };
 cx.fam.suika.y2005.CSS.Node.MediaRule.inherits (cx.fam.suika.y2005.CSS.Node.AtRule);
-cx.fam.suika.y2005.CSS.Node.MediaRule.prototype.getCSSNodeType = {
+cx.fam.suika.y2005.CSS.Node.MediaRule.prototype.getCSSNodeType = function () {
   return cx.fam.suika.y2005.CSS.Node.Rule.prototype.CSS_AT_MEDIA_NODE;
 };
-cx.fam.suika.y2005.CSS.Node.MediaRule.prototype.getType = {
+cx.fam.suika.y2005.CSS.Node.MediaRule.prototype.getType = function () {
   return cx.fam.suika.y2005.CSS.Node.Rule.prototype.MEDIA_RULE;
 };
 
@@ -528,10 +568,10 @@ cx.fam.suika.y2005.CSS.Node.FontFaceRule = function () {
   this.style = new cx.fam.suika.y2005.CSS.Node.StyleDeclaration ();
 };
 cx.fam.suika.y2005.CSS.Node.FontFaceRule.inherits (cx.fam.suika.y2005.CSS.Node.AtRule);
-cx.fam.suika.y2005.CSS.Node.FontFaceRule.prototype.getCSSNodeType = {
+cx.fam.suika.y2005.CSS.Node.FontFaceRule.prototype.getCSSNodeType = function () {
   return cx.fam.suika.y2005.CSS.Node.Rule.prototype.CSS_AT_FONT_FACE_NODE;
 };
-cx.fam.suika.y2005.CSS.Node.FontFaceRule.prototype.getType = {
+cx.fam.suika.y2005.CSS.Node.FontFaceRule.prototype.getType = function () {
   return cx.fam.suika.y2005.CSS.Node.Rule.prototype.FONT_FACE_RULE;
 };
 
@@ -571,10 +611,10 @@ cx.fam.suika.y2005.CSS.Node.PageRule = function () {
     (this, ["urn:x-suika-fam-cx:css:", "page"]);
 };
 cx.fam.suika.y2005.CSS.Node.PageRule.inherits (cx.fam.suika.y2005.CSS.Node.AtRule);
-cx.fam.suika.y2005.CSS.Node.PageRule.prototype.getCSSNodeType = {
+cx.fam.suika.y2005.CSS.Node.PageRule.prototype.getCSSNodeType = function () {
   return cx.fam.suika.y2005.CSS.Node.Rule.prototype.CSS_AT_PAGE_NODE;
 };
-cx.fam.suika.y2005.CSS.Node.PageRule.prototype.getType = {
+cx.fam.suika.y2005.CSS.Node.PageRule.prototype.getType = function () {
   return cx.fam.suika.y2005.CSS.Node.Rule.prototype.PAGE_RULE;
 };
 
@@ -647,10 +687,10 @@ cx.fam.suika.y2005.CSS.Node.ImportRule = function (hrefArg, mediaArg) {
   }
 };
 cx.fam.suika.y2005.CSS.Node.ImportRule.inherits (cx.fam.suika.y2005.CSS.Node.AtRule);
-cx.fam.suika.y2005.CSS.Node.ImportRule.prototype.getCSSNodeType = {
+cx.fam.suika.y2005.CSS.Node.ImportRule.prototype.getCSSNodeType = function () {
   return cx.fam.suika.y2005.CSS.Node.Rule.prototype.CSS_AT_IMPORT_NODE;
 };
-cx.fam.suika.y2005.CSS.Node.ImportRule.prototype.getType = {
+cx.fam.suika.y2005.CSS.Node.ImportRule.prototype.getType = function () {
   return cx.fam.suika.y2005.CSS.Node.Rule.prototype.IMPORT_RULE;
 };
 
@@ -663,7 +703,7 @@ cx.fam.suika.y2005.CSS.Node.ImportRule.prototype.getType = {
 cx.fam.suika.y2005.CSS.Node.ImportRule.prototype.getCSSText =
 function () {
   var r = '@import "';
-        + this.href.replace (/([\u000A\u000C\u000D"\\])/,
+        + this.href.replace (/([\u000A\u000C"\\]|\u000D\u000A?)/g,
                              function () { return "\\" + RegExp.$1 })
         + '"';
   var mq = this.media.getMediaText ();
@@ -717,10 +757,10 @@ cx.fam.suika.y2005.CSS.Node.CharsetRule = function (encodingArg) {
   this.encoding = encodingArg;
 };
 cx.fam.suika.y2005.CSS.Node.CharsetRule.inherits (cx.fam.suika.y2005.CSS.Node.AtRule);
-cx.fam.suika.y2005.CSS.Node.CharsetRule.prototype.getCSSNodeType = {
+cx.fam.suika.y2005.CSS.Node.CharsetRule.prototype.getCSSNodeType = function () {
   return cx.fam.suika.y2005.CSS.Node.Rule.prototype.CSS_AT_CHARSET_NODE;
 };
-cx.fam.suika.y2005.CSS.Node.CharsetRule.prototype.getType = {
+cx.fam.suika.y2005.CSS.Node.CharsetRule.prototype.getType = function () {
   return cx.fam.suika.y2005.CSS.Node.Rule.prototype.CHARSET_RULE;
 };
 
@@ -733,7 +773,7 @@ cx.fam.suika.y2005.CSS.Node.CharsetRule.prototype.getType = {
 cx.fam.suika.y2005.CSS.Node.CharsetRule.prototype.getCSSText =
 function () {
   return '@charset "'
-       + this.encoding.replace (/([\u000A\u000C\u000D"\\])/,
+       + this.encoding.replace (/([\u000A\u000C"\\]|\u000D\u000A?)/g,
                                 function () { return "\\" + RegExp.$1 })
        + '";\n';
 };
@@ -763,10 +803,10 @@ cx.fam.suika.y2005.CSS.Node.NamespaceRule = function (prefixArg, namespaceURIArg
 };
 cx.fam.suika.y2005.CSS.Node.NamespaceRule.inherits
   (cx.fam.suika.y2005.CSS.Node.AtRule);
-cx.fam.suika.y2005.CSS.Node.NamespaceRule.prototype.getCSSNodeType = {
+cx.fam.suika.y2005.CSS.Node.NamespaceRule.prototype.getCSSNodeType = function () {
   return cx.fam.suika.y2005.CSS.Node.Rule.prototype.CSS_AT_NAMESPACE_NODE;
 };
-cx.fam.suika.y2005.CSS.Node.NamespaceRule.prototype.getType = {
+cx.fam.suika.y2005.CSS.Node.NamespaceRule.prototype.getType = function () {
   return cx.fam.suika.y2005.CSS.Node.Rule.prototype.NAMESPACE_RULE;
 };
 
@@ -777,9 +817,9 @@ cx.fam.suika.y2005.CSS.Node.NamespaceRule.prototype.getType = {
 cx.fam.suika.y2005.CSS.Node.NamespaceRule.prototype.getCSSText =
 function () {
   var r = "@namespace";
-  if (this.prefix != null) r += " " + this.prefix;
+  if (this.prefix != null) r += " " + this._EscapeIdent (this.prefix);
   r += ' "'
-     + this.namespaceURI.replace (/([\u000A\u000C\u000D"\\])/,
+     + this.namespaceURI.replace (/([\u000A\u000C"\\]|\u000D\u000A?)/g,
                                   function () { return "\\" + RegExp.$1 })
      + '";\n';
   return r;
@@ -790,7 +830,7 @@ function () {
    The namespace URI.
    [non-standard]
 */
-cx.fam.suika.y2005.CSS.Node.CharsetRule.prototype.getNamespaceURI = function () {
+cx.fam.suika.y2005.CSS.Node.NamespaceRule.prototype.getNamespaceURI = function () {
   return this.namespaceURI;
 };
 /* Is setter necessary? */
@@ -799,8 +839,8 @@ cx.fam.suika.y2005.CSS.Node.CharsetRule.prototype.getNamespaceURI = function () 
    The namespace prefix.
    [non-standard]
 */
-cx.fam.suika.y2005.CSS.Node.CharsetRule.prototype.getPrefix = function () {
-  return this.encoding;
+cx.fam.suika.y2005.CSS.Node.NamespaceRule.prototype.getPrefix = function () {
+  return this.prefix;
 };
 /* Is setter necessary? */
 
@@ -821,10 +861,10 @@ cx.fam.suika.y2005.CSS.Node.UnknownRule.inherits (cx.fam.suika.y2005.CSS.Node.At
 cx.fam.suika.y2005.CSS.Node.UnknownRule.prototype.toString = function () {
   return "[object CSSUnknownRule]";
 };
-cx.fam.suika.y2005.CSS.Node.UnknownRule.prototype.getCSSNodeType = {
+cx.fam.suika.y2005.CSS.Node.UnknownRule.prototype.getCSSNodeType = function () {
   return cx.fam.suika.y2005.CSS.Node.Rule.prototype.CSS_UNKNOWN_RULE_NODE;
 };
-cx.fam.suika.y2005.CSS.Node.UnknownRule.prototype.getType = {
+cx.fam.suika.y2005.CSS.Node.UnknownRule.prototype.getType = function () {
   return cx.fam.suika.y2005.CSS.Node.Rule.prototype.UNKNOWN_RULE;
 };
 
@@ -834,16 +874,17 @@ cx.fam.suika.y2005.CSS.Node.UnknownRule.prototype.getType = {
    
    A |CSSStyleRule| object represents a rule set in a CSS style sheet.
 */
-cx.fam.suika.y2005.CSS.Node.RuleSet = function () {
-  cx.fam.suika.y2005.CSS.Node.RuleSet._superclass.apply (this, arguments);
+cx.fam.suika.y2005.CSS.Node.RuleSet = function (sel) {
+  cx.fam.suika.y2005.CSS.Node.RuleSet._superclass.apply (this, []);
+  this.selector = sel;
   this.style = new cx.fam.suika.y2005.CSS.Node.StyleDeclaration ();
   this.style.parentRule = this;
 };
 cx.fam.suika.y2005.CSS.Node.RuleSet.inherits (cx.fam.suika.y2005.CSS.Node.Rule);
-cx.fam.suika.y2005.CSS.Node.RuleSet.prototype.getCSSNodeType = {
+cx.fam.suika.y2005.CSS.Node.RuleSet.prototype.getCSSNodeType = function () {
   return cx.fam.suika.y2005.CSS.Node.Rule.prototype.CSS_RULE_SET_NODE;
 };
-cx.fam.suika.y2005.CSS.Node.RuleSet.prototype.getType = {
+cx.fam.suika.y2005.CSS.Node.RuleSet.prototype.getType = function () {
   return cx.fam.suika.y2005.CSS.Node.Rule.prototype.STYLE_RULE;
 };
 
@@ -919,7 +960,7 @@ cx.fam.suika.y2005.CSS.Node.StyleDeclaration = function () {
 };
 cx.fam.suika.y2005.CSS.Node.StyleDeclaration.inherits
   (cx.fam.suika.y2005.CSS.Node.Block);
-cx.fam.suika.y2005.CSS.Node.StyleDeclaration.prototype.getCSSNodeType = {
+cx.fam.suika.y2005.CSS.Node.StyleDeclaration.prototype.getCSSNodeType = function () {
   return cx.fam.suika.y2005.CSS.Node.Rule.prototype.CSS_DECLARATION_BLOCK_NODE;
 };
 
@@ -986,7 +1027,7 @@ cx.fam.suika.y2005.CSS.Node.Declaration = function () {
   cx.fam.suika.y2005.CSS.Node.Declaration._superclass.apply (this, arguments);
 };
 cx.fam.suika.y2005.CSS.Node.Declaration.inherits (cx.fam.suika.y2005.CSS.Node.Node);
-cx.fam.suika.y2005.CSS.Node.Declaration.prototype.getCSSNodeType = {
+cx.fam.suika.y2005.CSS.Node.Declaration.prototype.getCSSNodeType = function () {
   return cx.fam.suika.y2005.CSS.Node.Rule.prototype.CSS_EMPTY_DECLARATION_NODE;
 };
 
@@ -1012,14 +1053,18 @@ cx.fam.suika.y2005.CSS.Node.Declaration.prototype.toString = function () {
    A |CSSPropertyDeclaration| object represents a CSS declaration,
    i.e. a pair of property (or descriptor) name and value.
 */
-cx.fam.suika.y2005.CSS.Node.PropertyDeclaration = function (nsURI, lname) {
+cx.fam.suika.y2005.CSS.Node.PropertyDeclaration =
+function (nsURI, prefix, lname, val) {
   cx.fam.suika.y2005.CSS.Node.PropertyDeclaration._superclass.apply (this, []);
   this.propertyNamespaceURI = nsURI;
+  this.propertyPrefix = prefix != null ? prefix.toLowerCase () : null;
   this.propertyLocalName = lname.toLowerCase ();
+  this.propertyValue = val;
 };
 cx.fam.suika.y2005.CSS.Node.PropertyDeclaration.inherits
   (cx.fam.suika.y2005.CSS.Node.Declaration);
-cx.fam.suika.y2005.CSS.Node.PropertyDeclaration.prototype.getCSSNodeType = {
+cx.fam.suika.y2005.CSS.Node.PropertyDeclaration.prototype.getCSSNodeType =
+function () {
   return cx.fam.suika.y2005.CSS.Node.Rule.prototype.CSS_PROPERTY_DECLARATION_NODE;
 };
 
@@ -1030,7 +1075,20 @@ cx.fam.suika.y2005.CSS.Node.PropertyDeclaration.prototype.getCSSNodeType = {
 */
 cx.fam.suika.y2005.CSS.Node.PropertyDeclaration.prototype.getCSSText =
 function () {
-  return this.getPropertyName () + ": " + this.getValue ().getCSSText ();
+  return this._EscapeIdent (this.getPropertyName ()) + ": "
+       + this.getPropertyValue ().getCSSText ();
+};
+
+/**
+   The priority value of the property, if any, or |null|.
+*/
+cx.fam.suika.y2005.CSS.Node.PropertyDeclaration.prototype.getPriority =
+function () {
+  return this.priority;
+};
+cx.fam.suika.y2005.CSS.Node.PropertyDeclaration.prototype.setPriority =
+function (newValue) {
+  this.priority = newValue;
 };
 
 cx.fam.suika.y2005.CSS.Node.PropertyDeclaration.prototype.getPropertyLocalName =
@@ -1126,7 +1184,7 @@ cx.fam.suika.y2005.CSS.RuleList.prototype.getLength = function () {
   return this.length;
 };
 
-/* Revision: $Date: 2005/11/01 14:27:47 $ */
+/* Revision: $Date: 2005/11/02 12:59:21 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.
