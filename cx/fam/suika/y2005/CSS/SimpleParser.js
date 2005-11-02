@@ -163,9 +163,8 @@ function (/* |ATKEYWORD| */ token, parentNode) {
     if (token.type == "[" || token.type == "(" || token.type == "FUNCTION") {
       this._TokenStack.push (token);
       this._SkipAnyEnclosed ();
-    } else {
-      token = this._PopToken (false);
     }
+    token = this._PopToken (false);
   }
   /* Skips a |block| if any */
   if (token == null) {
@@ -208,9 +207,8 @@ function (parentNode) {
     if (token.type == "[" || token.type == "(" || token.type == "FUNCTION") {
       this._TokenStack.push (token);
       this._SkipAnyEnclosed ();
-    } else {
-      token = this._PopToken (false);
     }
+    token = this._PopToken (false);
   }
   if (token && token.type == "{") {
     this._TokenStack.push (token);
@@ -265,9 +263,8 @@ function (parentNode) {
       } else if (token.type == "}") {
         this._TokenStack.push (token);
         return;
-      } else {
-        token = this._PopToken (false);
       }
+      token = this._PopToken (false);
     }
     if (token.type == ";") {
       token = this._PopToken (false);
@@ -510,6 +507,11 @@ function (nsContext) {
         }
       }
       
+      if (ln == null) {
+        pfx = null;
+        nsuri = nsContext.lookupNamespaceURI (null);
+      }
+      
       var tsel = this._Factory.createSTypeSelectorNS (nsuri, pfx, ln);
       var selseq = this._Factory.createSSimpleSelectorSequence (tsel);
       
@@ -577,12 +579,12 @@ function (nsContext) {
                                 token.type == "DELIM" && token.value == "*")) {
             ln = token.value;
             pfx = null;
+            token = this._PopToken (true);
           }
           
           if (token && token.type == "DELIM" && token.value == "|") {
             token = this._PopToken (true);
-            if (token != null && (token.type == "IDENT" ||
-                                  token.type == "DELIM" && token.value == "*")) {
+            if (token != null && token.type == "IDENT") {
               pfx = ln != null ? ln.toLowerCase () : "";
               if (pfx != "*") {
                 nsuri = nsContext.lookupNamespaceURI (pfx != "" ? pfx : null);
@@ -609,7 +611,7 @@ function (nsContext) {
           }
           
           if (token != null && token.type == "S") token = this._PopToken (false);
-          if (token != null) {
+          if (token != null && ln != null) {
             var op = token.type;
             if ((op == "DELIM" && token.value == "=") ||
                 op == "INCLUDES" ||
@@ -626,7 +628,7 @@ function (nsContext) {
                   selseq.appendSimpleSelector
                     (this._Factory.createSAttributeSelectorNS
                        (nsuri, pfx, ln,
-                        op == "="
+                        op == "DELIM"
                             ? cx.fam.suika.y2005.CSS.Selectors.AttributeSelector
                               .prototype.SELECTORS_ATTRIBUTE_EQUALS        :
                         op == "INCLUDES"
@@ -640,13 +642,22 @@ function (nsContext) {
                               .prototype.SELECTORS_ATTRIBUTE_PREFIXMATCH   :
                         op == "SUFFIXMATCH"
                             ? cx.fam.suika.y2005.CSS.Selectors.AttributeSelector
-                              .prototype.SELECTORS_ATTRIBUTE_SUFFIX<ATCH   :
+                              .prototype.SELECTORS_ATTRIBUTE_SUFFIXMATCH   :
                               cx.fam.suika.y2005.CSS.Selectors.AttributeSelector
-                              .prototype.SELECTORS_ATTRIBUTE_SUBSTRINGMATCH),
-                        val);
+                              .prototype.SELECTORS_ATTRIBUTE_SUBSTRINGMATCH,
+                        val));
+                  token = this._PopToken (true);
                   continue SimpleSel;
                 }
               }
+            } else if (op == "]") {
+              selseq.appendSimpleSelector
+                    (this._Factory.createSAttributeSelectorNS
+                       (nsuri, pfx, ln,
+                        cx.fam.suika.y2005.CSS.Selectors.AttributeSelector
+                        .prototype.SELECTORS_ATTRIBUTE_HAS, null));
+              token = this._PopToken (true);
+              continue SimpleSel;
             }
           }
         } else if (token.type == "HASH" && !hasPseudoElement) {
@@ -1236,27 +1247,16 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._PopToken = function (Ssignificant
       } /* Q */
     } else if (ch == "/") {
       var ch2 = this._PopChar ();
-      var chars = [];
-      if (ch2 == "*") {
-        chars.push (ch2);
+      if (ch2 == "*") { /* COMMENT */
         ch2 = this._PopChar ();
-        C: while (true) {
-          while (ch2.length > 0 && ch2 != "*") {
-            chars.push (ch2);
+        C: while (ch2.length > 0) {
+          if (ch2 == "*") {
             ch2 = this._PopChar ();
-          }
-          while (ch2 == "*") {
-            chars.push (ch2);
-            ch2 = this._PopChar ();
-          }
-          if (ch2 == "/") { /* COMMENT */
-            break C;
-          } else if (ch2.length == 0) {
-            this._CharStack.push (ch2);
-            for (var i = 0; i < chars.length; i++) {
-              this._CharStack.push (chars[i]);
+            if (ch2 == "/") {
+              break C;
             }
-            return {type: "DELIM", value: ch};
+          } else {
+            ch2 = this._PopChar ();
           }
         } /* C */
       } else {
@@ -1277,10 +1277,18 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._PopToken = function (Ssignificant
       }
     } else if (ch == "<") {
       var ch2 = this._PopChar ();
-      if (ch2 == "-") {
+      if (ch2 == "!") {
         var ch3 = this._PopChar ();
-        if (ch3 == "-") { /* CDO */
-          return {type: "CDO"};
+        if (ch3 == "-") {
+          var ch4 = this._PopChar ();
+          if (ch4 == "-") { /* CDO */
+            return {type: "CDO"};
+          } else {
+            if (ch4.length > 0) this._CharStack.push (ch4);
+            this._CharStack.push (ch3);
+            this._CharStack.push (ch2);
+            return {type: "DELIM", value: ch};
+          }
         } else {
           if (ch3.length > 0) this._CharStack.push (ch3);
           this._CharStack.push (ch2);
@@ -1397,7 +1405,7 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._PopChar = function () {
   return ch;
 };
 
-/* Revision: $Date: 2005/11/02 12:59:21 $ */
+/* Revision: $Date: 2005/11/02 15:14:40 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

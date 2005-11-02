@@ -71,9 +71,11 @@ cx.fam.suika.y2005.DOM.Implementation.DOMImplementation._AddFeature
        
        @param namespaceURI The namespace URI, or |null|.
        @param prefix       The namespace prefix, |*|, an empty string, or |null|.
-       @param localName    The local name, or |*|.
+       @param localName    The local name, |*|, or |null| (implied universal selector).
+                           If |null|, |prefix| is ignored.
     */
     createSTypeSelectorNS: function (namespaceURI, prefix, localName) {
+      if (localName == null) prefix = null;
       return new cx.fam.suika.y2005.CSS.Selectors.TypeSelector
                (namespaceURI, prefix, localName);
     },
@@ -90,7 +92,7 @@ cx.fam.suika.y2005.DOM.Implementation.DOMImplementation._AddFeature
     createSAttributeSelectorNS:
     function (namespaceURI, prefix, localName, operator, value) {
       return new cx.fam.suika.y2005.CSS.Selectors.AttributeSelector
-               (namespaceURI, prefix, localName, op, value);
+               (namespaceURI, prefix, localName, operator, value);
     },
     
     /**
@@ -405,7 +407,7 @@ cx.fam.suika.y2005.CSS.Selectors.SimpleSelectorSequence.prototype
 cx.fam.suika.y2005.CSS.Selectors.SimpleSelectorSequence.prototype.getSelectorText =
 function () {
   var r = this.typesel.getSelectorText ();
-  if (r.length == 0 && (this.sels.length + this.pels.length > 0)) {
+  if (r.length + this.sels.length + this.pels.length == 0) {
     r = "*";
   }
   for (var i = 0; i < this.sels.length; i++) {
@@ -571,10 +573,18 @@ cx.fam.suika.y2005.CSS.Selectors.TypeSelector.prototype.getSelectorText =
 function () {
   var r;
   if (this.prefix != null) {
-    r = cx.fam.suika.y2005.CSS.Selectors._EscapeIdent (this.prefix) + "|"
-      + cx.fam.suika.y2005.CSS.Selectors._EscapeIdent (this.localName);
+    r = (this.prefix == "*"
+          ? "*"
+          : cx.fam.suika.y2005.CSS.Selectors._EscapeIdent (this.prefix)) + "|"
+      + (this.localName == "*"
+          ? "*"
+          : cx.fam.suika.y2005.CSS.Selectors._EscapeIdent (this.localName));
+  } else if (this.localName != null) {
+    r = (this.localName == "*"
+          ? "*"
+          : cx.fam.suika.y2005.CSS.Selectors._EscapeIdent (this.localName));
   } else {
-    r = cx.fam.suika.y2005.CSS.Selectors._EscapeIdent (this.localName);
+    r = "";
   }
   return r;
 };
@@ -678,10 +688,16 @@ cx.fam.suika.y2005.CSS.Selectors.AttributeSelector.prototype.getSelectorText =
 function () {
   var r = "[";
   if (this.prefix != null) {
-    r += cx.fam.suika.y2005.CSS.Selectors._EscapeIdent (this.prefix) + "|"
-       + cx.fam.suika.y2005.CSS.Selectors._EscapeIdent (this.localName);
+    r += (this.prefix == "*"
+           ? "*"
+           : cx.fam.suika.y2005.CSS.Selectors._EscapeIdent (this.prefix)) + "|"
+       + (this.localName == "*"
+           ? "*"
+           : cx.fam.suika.y2005.CSS.Selectors._EscapeIdent (this.localName));
   } else {
-    r += cx.fam.suika.y2005.CSS.Selectors._EscapeIdent (this.localName);
+    r += (this.localName == "*"
+           ? "*"
+           : cx.fam.suika.y2005.CSS.Selectors._EscapeIdent (this.localName));
   }
   if (this.operator != this.SELECTORS_ATTRIBUTE_HAS) {
     r += this.operator == this.SELECTORS_ATTRIBUTE_EQUALS ?       "=" :
@@ -903,7 +919,7 @@ cx.fam.suika.y2005.CSS.Selectors.PseudoElement.prototype.toString = function () 
   return "[object SPseudoElement]";
 };
 
-/* Revision: $Date: 2005/11/02 12:59:21 $ */
+/* Revision: $Date: 2005/11/02 15:14:40 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

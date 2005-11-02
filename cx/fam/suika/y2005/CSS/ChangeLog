@@ -1,5 +1,20 @@
 2005-11-02  Wakaba  <w@suika.fam.cx>
 
+	* Selectors.js (createSTypeSelectorNS): Sets |prefix| |null| if |localName|
+	is |null|.
+	(SimpleSelectorSequence.getCSSText): Bug on implied |*| fixed.
+	(TypeSelector.getCSSText, AttributeSelector.getCSSText): Don't escape |*|.
+	
+	* SimpleParser.js: Don't enter infinite loop after |_SkipAnyEnclosed|.
+	Sets correct prefix and namespace URI values for implied |*|.
+	Attribute existence selector is now correctly parsed.
+	(_PopToken): Code to parse comments is rewritten so that unclosed
+	comment is skipped (to the end of the entity).  This fix
+	is consistent with the error recovering rule in CSS.  Code
+	to parse |CDO| is bug fixed.
+
+2005-11-02  Wakaba  <w@suika.fam.cx>
+
 	* Value.js: New script.
 	
 	* Node.js (createPropertyNS): Parameters |prefix| and |value| added.
