@@ -1,3 +1,19 @@
+if (typeof (cx) == "undefined") {
+  cx = {};
+}
+if (typeof (cx.fam) == "undefined") {
+  cx.fam = {};
+}
+if (typeof (cx.fam.suika) == "undefined") {
+  cx.fam.suika = {};
+}
+if (typeof (cx.fam.suika.y2005) == "undefined") {
+  cx.fam.suika.y2005 = {};
+}
+if (typeof (cx.fam.suika.y2005.ElementClass) == "undefined") {
+  cx.fam.suika.y2005.ElementClass = {};
+}
+
 JSAN.require ("cx.fam.suika.y2005.DOM.Node");
 
 /*
@@ -20,6 +36,38 @@ cx.fam.suika.y2005.DOM.Node.Element._AddFeature
         this._Node.className = clses.join (" ");
       }
     },
+    
+    /**
+       Returns a snapshot list of class names of the element.
+    */
+    getClassNames: function () {
+      var vals = [];
+      var a = [["http://www.w3.org/1999/xhtml", "class"],
+               ["http://www.w3.org/2002/xhtml2/", "class"]];
+      for (var n in a) {
+        var v = this.getAttributeNS (a[n][0], a[n][1]).split (/\s+/);
+        for (var j in v) {
+          vals.push (v[j]);
+        }
+      }
+      var b = [["http://www.w3.org/1999/xhtml", null, "class"],
+               ["http://www.w3.org/2000/svg", null, "class"],
+               ["http://www.w3.org/1998/Math/MathML", null, "class"],
+               ["http://www.w3.org/2002/xhtml2/", null, "class"],
+               ["urn:x-suika-fam-cx:markup:suikawiki:0:9:", null, "class"],
+               ["urn:x-suika-fam-cx:markup:suikawiki:0:10:", null, "class"],
+               ["urn:x-suika-fam-cx:markup:ietf:html:3:draft:00:", null, "class"]];
+      var ns = this.getNamespaceURI ();
+      for (var n in b) {
+        if (ns != b[n][0]) continue;
+        var v = this.getAttributeNS (b[n][1], b[n][2]).split (/\s+/);
+        for (var j in v) {
+          vals.push (v[j]);
+        }
+      }
+      return vals;
+    },
+    
     hasClassName: function (c) {
       var cls = this._Node.className;
       if (cls != null) {

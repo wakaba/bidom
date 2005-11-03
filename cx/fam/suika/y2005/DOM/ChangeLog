@@ -1,3 +1,10 @@
+2005-11-03  Wakaba  <w@suika.fam.cx>
+
+	* Node.js (Node.previousElement): New attribute.
+	(Element.getIds): New method.
+	(Attr.isId): Implemented.
+	(SnapshotAttributeMap): New class.
+
 2005-11-02  Wakaba  <w@suika.fam.cx>
 
 	* Implementation.js (_FeatureModule): References to

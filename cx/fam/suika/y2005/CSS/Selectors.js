@@ -19,15 +19,17 @@ if (typeof (cx.fam.suika.y2005.CSS.Selectors) == "undefined") {
 
 JSAN.require ("cx.fam.suika.y2005.Class.Inherit");
 JSAN.require ("cx.fam.suika.y2005.DOM.Implementation");
+JSAN.require ("cx.fam.suika.y2005.DOM.Node");
+cx.fam.suika.y2005.DOM.Node.requireDOMNodeFeature
+  ("http://suika.fam.cx/www/cx/fam/suika/y2005/ElementClass#", "1.0");
 
 /**
    Escapes a string as an |IDENT|.
 */
 cx.fam.suika.y2005.CSS.Selectors._EscapeIdent = function (s) {
   return s.replace
-           (/([\u0000-\u002C\u002E\u002F\u003A-\u0040\u005B-\u005E\u0080\u007B-\u007F]|^[0-9])/g,
-            function () {
-              var c = RegExp.$1;
+           (/([\u0000-\u002C\u002E\u002F\u003A-\u0040\u005B-\u005E\u0080\u007B-\u007F]|^[0-9]|^-$)/g,
+            function (c) {
               if (!c.match (/^[\u0000-\u0020\u007F]/)) {
                 return "\\" + c;
               } else {
@@ -149,6 +151,18 @@ cx.fam.suika.y2005.DOM.Implementation.DOMImplementation._AddFeature
     createSPseudoElementNS: function (namespaceURI, prefix, localName) {
       return new cx.fam.suika.y2005.CSS.Selectors.PseudoElement
                (namespaceURI, prefix, localName);
+    },
+    
+    /**
+       Creates a specificity object.
+       
+       @param a |a| value.
+       @param b |b| value.
+       @param c |c| value.
+       @param d |d| value.
+    */
+    createSSpecificity: function (a, b, c, d) {
+      return new cx.fam.suika.y2005.CSS.Selectors.Specificity (a, b, c, d);
     }
   });
 
@@ -162,8 +176,8 @@ cx.fam.suika.y2005.DOM.Implementation.DOMImplementation._AddFeature
    will result in an invalid selector.
 */
 cx.fam.suika.y2005.CSS.Selectors.SelectorsGroup = function () {
+  this.v = [];
 };
-cx.fam.suika.y2005.CSS.Selectors.SelectorsGroup.inherits (Array);
 
 /**
    Adds a selector to the group.
@@ -172,7 +186,7 @@ cx.fam.suika.y2005.CSS.Selectors.SelectorsGroup.inherits (Array);
 */
 cx.fam.suika.y2005.CSS.Selectors.SelectorsGroup.prototype.appendSelector =
 function (sel) {
-  this.push (sel);
+  this.v.push (sel);
 };
 
 /**
@@ -182,7 +196,7 @@ function (sel) {
    @return The |index|th selector or |null|.
 */
 cx.fam.suika.y2005.CSS.Selectors.SelectorsGroup.prototype.item = function (index) {
-  return this[index];
+  return this.v[index];
 };
 
 /**
@@ -191,7 +205,31 @@ cx.fam.suika.y2005.CSS.Selectors.SelectorsGroup.prototype.item = function (index
    @return The number of selectors.
 */
 cx.fam.suika.y2005.CSS.Selectors.SelectorsGroup.prototype.getLength = function () {
-  return this.length;
+  return this.v.length;
+};
+
+/**
+   Tests whether the selector matched to an element node or not.
+   
+   @param elementNode     An element node to test.
+   @param pseudoElements  A |SSimpleSelectorSequence| object, or |null|,
+                          which is equals to an empty |SSimpleSelectorSequence|.
+                          The selector and the |elementNode| match if and only if 
+                          the list of pseudo elements in the selector is equal
+                          to the list of pseudo elements in the element node.
+                          
+                              Note.  Any simple selector other than pseudo element
+                                     in |pseudoElements| is ignored.
+  @return If match, |true|, or |false| otherwise.
+*/
+cx.fam.suika.y2005.CSS.Selectors.SelectorsGroup.prototype.matchElement =
+function (elementNode, pseudoElements) {
+  for (var i = 0; i < this.v.length; i++) {
+    if (this.v[i].matchElement (elementNode, pseudoElements)) {
+      return true;
+    }
+  }
+  return false;
 };
 
 /**
@@ -206,9 +244,9 @@ cx.fam.suika.y2005.CSS.Selectors.SelectorsGroup.prototype.getLength = function (
 */
 cx.fam.suika.y2005.CSS.Selectors.SelectorsGroup.prototype.getSelectorText =
 function () {
-  var r = this[0] != null ? this[0].getSelectorText () : "";
-  for (var i = 1; i < this.length; i++) {
-    r += ",\n" + this[i].getSelectorText ();
+  var r = this.v[0] != null ? this.v[0].getSelectorText () : "";
+  for (var i = 1; i < this.v.length; i++) {
+    r += ",\n" + this.v[i].getSelectorText ();
   }
   return r;
 };
@@ -228,9 +266,9 @@ cx.fam.suika.y2005.CSS.Selectors.SelectorsGroup.prototype.toString = function ()
    will result in an invalid selector.
 */
 cx.fam.suika.y2005.CSS.Selectors.Selector = function () {
+  this.v = [];
   this.cmbs = [null];
 };
-cx.fam.suika.y2005.CSS.Selectors.Selector.inherits (Array);
 
 /**
    Adds a simple selector sequence to the selector.
@@ -241,8 +279,8 @@ cx.fam.suika.y2005.CSS.Selectors.Selector.inherits (Array);
 */
 cx.fam.suika.y2005.CSS.Selectors.Selector.prototype.appendSimpleSelectorSequence =
 function (combinator, sel) {
-  if (this.length != 0) this.cmbs.push (combinator);
-  this.push (sel);
+  if (this.v.length != 0) this.cmbs.push (combinator);
+  this.v.push (sel);
 };
 
 /**
@@ -272,7 +310,7 @@ cx.fam.suika.y2005.CSS.Selectors.Selector
    @return The |index|th sequence or |null|.
 */
 cx.fam.suika.y2005.CSS.Selectors.Selector.prototype.item = function (index) {
-  return this[index];
+  return this.v[index];
 };
 
 /**
@@ -281,7 +319,69 @@ cx.fam.suika.y2005.CSS.Selectors.Selector.prototype.item = function (index) {
    @return The number of sequences.
 */
 cx.fam.suika.y2005.CSS.Selectors.Selector.prototype.getLength = function () {
-  return this.length;
+  return this.v.length;
+};
+
+/**
+   Tests whether the selector matched to an element node or not.
+   
+   @param elementNode     An element node to test.
+   @param pseudoElements  A |SSimpleSelectorSequence| object, or |null|,
+                          which is equals to an empty |SSimpleSelectorSequence|.
+                          The selector and the |elementNode| match if and only if 
+                          the list of pseudo elements in the selector is equal
+                          to the list of pseudo elements in the element node.
+                          
+                              Note.  Any simple selector other than pseudo element
+                                     in |pseudoElements| is ignored.
+  @return If match, |true|, or |false| otherwise.
+*/
+cx.fam.suika.y2005.CSS.Selectors.Selector.prototype.matchElement =
+function (elementNode, pseudoElements) {
+  var i = this.v.length - 1;
+  if (i == -1) return false /* ISSUE: Should be |true|? Or |false|? */;
+  if (!this.v[i].matchElement (elementNode, pseudoElements)) {
+    return false;
+  }
+  SSS: for (; i > 0; i--) {
+    switch (this.cmbs[i + 1]) {
+    case this.SELECTORS_COMBINATOR_CHILD:
+      elementNode = elementNode.getParentElement ();
+      if (elementNode == null) return false;
+      if (!this.v[i].matchElement (elementNode, null)) {
+        return false;
+      }
+      continue SSS;
+    case this.SELECTORS_COMBINATOR_DESCENDANT:
+      elementNode = elementNode.getParentElement ();
+      while (elementNode != null) {
+        if (this.v[i].matchElement (elementNode, null)) {
+          continue SSS;
+        }
+        elementNode = elementNode.getParentElement ();
+      }
+      return false;
+    case this.SELECTORS_COMBINATOR_DIRECT_ADJACENT_SIBLING:
+      elementNode = elementNode.getPreviousElement ();
+      if (elementNode == null) return false;
+      if (!this.v[i].matchElement (elementNode, null)) {
+        return false;
+      }
+      continue SSS;
+    case this.SELECTORS_COMBINATOR_INDIRECT_ADJACENT_SIBLING:
+      elementNode = elementNode.getPreviousElement ();
+      while (elementNode != null) {
+        if (this.v[i].matchElement (elementNode, null)) {
+          continue SSS;
+        }
+        elementNode = elementNode.getPreviousElement ();
+      }
+      return false;
+    default:
+      return false;
+    }
+  } /* SSS */
+  return true;
 };
 
 /**
@@ -298,8 +398,8 @@ cx.fam.suika.y2005.CSS.Selectors.Selector.prototype.getLength = function () {
 */
 cx.fam.suika.y2005.CSS.Selectors.Selector.prototype.getSelectorText =
 function () {
-  var r = this[0] != null ? this[0].getSelectorText () : "";
-  for (var i = 1; i < this.length; i++) {
+  var r = this.v[0] != null ? this.v[0].getSelectorText () : "";
+  for (var i = 1; i < this.v.length; i++) {
     if (this.cmbs[i] == this.SELECTORS_COMBINATOR_CHILD) {
       r += " +";
     } else if (this.cmbs[i] == this.SELECTORS_COMBINATOR_DIRECT_ADJACENT_SIBLING) {
@@ -307,9 +407,28 @@ function () {
     } else if (this.cmbs[i] == this.SELECTORS_COMBINATOR_INDIRECT_ADJACENT_SIBLING) {
       r += " ~";
     }
-    r += " " + this[i].getSelectorText ();
+    r += " " + this.v[i].getSelectorText ();
   }
   return r;
+};
+
+/**
+   The specificity of the simple selector.
+*/
+cx.fam.suika.y2005.CSS.Selectors.Selector.prototype.getSpecificity =
+function () {
+  var a = 0;
+  var b = 0;
+  var c = 0;
+  var d = 0;
+  for (var i = 0; i < this.v.length; i++) {
+    var s = this.v[i].getSpecificity ();
+    a += s.getA ();
+    b += s.getB ();
+    c += s.getC ();
+    d += s.getD ();
+  }
+  return new cx.fam.suika.y2005.CSS.Selectors.Specificity (a, b, c, d);
 };
 
 cx.fam.suika.y2005.CSS.Selectors.Selector.prototype.toString = function () {
@@ -358,6 +477,48 @@ function (sel) {
 cx.fam.suika.y2005.CSS.Selectors.SimpleSelectorSequence.prototype.appendSimpleSelector
 = function (sel) {
   this.sels.push (sel);
+};
+
+/**
+   Tests whether the selector matched to an element node or not.
+   
+   @param elementNode     An element node to test.
+   @param pseudoElements  A |SSimpleSelectorSequence| object, or |null|,
+                          which is equals to an empty |SSimpleSelectorSequence|.
+                          The selector and the |elementNode| match if and only if 
+                          the list of pseudo elements in the selector is equal
+                          to the list of pseudo elements in the element node.
+                          
+                              Note.  Any simple selector other than pseudo element
+                                     in |pseudoElements| is ignored.
+  @return If match, |true|, or |false| otherwise.
+*/
+cx.fam.suika.y2005.CSS.Selectors.SimpleSelectorSequence.prototype.matchElement =
+function (elementNode, pseudoElements) {
+  /* Pseudo element specifications */
+  if (pseudoElements == null) {
+    if (this.pels.length != 0) return false;
+  } else if (this.pels.length != pseudoElements.getPseudoElementLength ()) {
+    return false;
+  }
+  for (var i = 0; i < this.pels.length; i++) {
+    if (!this.pels[i].isEqualSimpleSelector (pseudoElements.getPseudoElement (i))) {
+      return false;
+    }
+  }
+  
+  /* Type or universal selector vs element type */
+  if (!this.typesel.matchElement (elementNode)) {
+    return false;
+  }
+  
+  /* Other simple selectors */
+  for (var i = 0; i < this.sels.length; i++) {
+    if (!this.sels[i].matchElement (elementNode)) {
+      return false;
+    }
+  }
+  return true;
 };
 
 /**
@@ -430,6 +591,26 @@ cx.fam.suika.y2005.CSS.Selectors.SimpleSelectorSequence.prototype
 };
 
 /**
+   The specificity of the simple selector.
+*/
+cx.fam.suika.y2005.CSS.Selectors.SimpleSelectorSequence.prototype.getSpecificity =
+function () {
+  var a = 0;
+  var b = 0;
+  var c = 0;
+  var d = this.typesel.getSimpleSelectorType () == this.typesel.SELECTORS_TYPE_SELECTOR
+            ? 1 : 0;
+  for (var i = 0; i < this.sels.length; i++) {
+    var s = this.sels[i].getSpecificity ();
+    a += s.getA ();
+    b += s.getB ();
+    c += s.getC ();
+    d += s.getD ();
+  }
+  return new cx.fam.suika.y2005.CSS.Selectors.Specificity (a, b, c, d);
+};
+
+/**
    The type or universal selector in the simple selector sequence.
    
    @return The type or universal selectors.
@@ -455,6 +636,37 @@ function () {
             in this object model.
 */
 cx.fam.suika.y2005.CSS.Selectors.SimpleSelector = function () {
+};
+
+/**
+   Tests whether a simple selector represents the same thing or not.
+   
+     Note.  Two simple selectors with different |simpleSelectorType|
+            will never be equal. Two simple selectors with different
+            textual representation might be equal if, e.g., their
+            namespace prefixes are different but the namespace URIs bound
+            to them are the same.  Keywords and namespace prefixes are
+            case-insensitive while local names and attribute values are
+            always case-sensitive.
+   
+   @param ssel  A simple selector to compare.
+   @return      If equals, |true|, or |false| otherwise.
+*/
+cx.fam.suika.y2005.CSS.Selectors.SimpleSelector.prototype.isEqualSimpleSelector =
+function (ssel) {
+  return false;
+};
+
+/**
+   Tests whether the selector matched to an element node or not.
+   
+   @param elementNode     An element node to test.
+   @param pseudoElements  This parameter is ignored.
+   @return If match, |true|, or |false| otherwise.
+*/
+cx.fam.suika.y2005.CSS.Selectors.SimpleSelector.prototype.matchElement =
+function (elementNode, pseudoElements) {
+  return false;
 };
 
 /**
@@ -496,6 +708,14 @@ function () {
   return "";
 };
 
+/**
+   The specificity of the simple selector.
+*/
+cx.fam.suika.y2005.CSS.Selectors.SimpleSelector.prototype.getSpecificity =
+function () {
+  return new cx.fam.suika.y2005.CSS.Selectors.Specificity (0, 0, 0, 0);
+};
+
 cx.fam.suika.y2005.CSS.Selectors.SimpleSelector.prototype.toString = function () {
   return "[object SSimpleSelector]";
 };
@@ -525,7 +745,7 @@ cx.fam.suika.y2005.CSS.Selectors.TypeSelector.inherits
   (cx.fam.suika.y2005.CSS.Selectors.SimpleSelector);
 cx.fam.suika.y2005.CSS.Selectors.TypeSelector.prototype.getSimpleSelectorType =
 function () {
-  if (this.localName == "*") {
+  if (this.localName == "*" || this.localName == null) {
     return this.SELECTORS_UNIVERESAL_SELECTOR;
   } else {
     return this.SELECTORS_TYPE_SELECTOR;
@@ -569,6 +789,46 @@ function () {
   return this.prefix;
 };
 
+cx.fam.suika.y2005.CSS.Selectors.TypeSelector.prototype.isEqualSimpleSelector =
+function (ssel) {
+  if (ssel.getSimpleSelectorType () != this.getSimpleSelectorType ()) return false;
+  if (this.localName == ssel.getLocalName ()) {
+    if (this.namespaceURI == ssel.getNamespaceURI ()) {
+      if (this.namespaceURI == null) {
+        if (this.prefix == ssel.getPrefix ()) {
+          return true;
+        }
+      } else {
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
+cx.fam.suika.y2005.CSS.Selectors.TypeSelector.prototype.matchElement =
+function (elementNode, pseudoElements) {
+  if (this.localName == "*" ||
+      this.localName == elementNode.getLocalName ()) {
+    if (this.prefix == "*") {
+      return true;
+    } else if (this.namespaceURI == null) {
+      if (this.prefix == "") {
+        if (elementNode.getNamespaceURI () == null) {
+          return true;
+        }
+      } else {
+        return true;
+      }
+    } else if (this.namespaceURI == elementNode.getNamespaceURI ()) {
+      return true;
+    }
+  } else if (this.localName == null) { /* Implied universal selector */
+    return true;
+  }
+  return false;
+};
+
 cx.fam.suika.y2005.CSS.Selectors.TypeSelector.prototype.getSelectorText =
 function () {
   var r;
@@ -587,6 +847,12 @@ function () {
     r = "";
   }
   return r;
+};
+
+cx.fam.suika.y2005.CSS.Selectors.TypeSelector.prototype.getSpecificity =
+function () {
+  return new cx.fam.suika.y2005.CSS.Selectors.Specificity
+               (0, 0, 0, this.localName == "*" || this.localName == null ? 0 : 1);
 };
 
 cx.fam.suika.y2005.CSS.Selectors.TypeSelector.prototype.toString = function () {
@@ -684,6 +950,107 @@ function () {
   return this.value;
 };
 
+cx.fam.suika.y2005.CSS.Selectors.AttributeSelector.prototype.isEqualSimpleSelector =
+function (ssel) {
+  if (ssel.getSimpleSelectorType () != this.SELECTORS_ATTRIBUTE_SELECTOR) return false;
+  if (this.operator != ssel.getOperator ()) {
+    return false;
+  } else if (this.operator != this.SELECTORS_ATTRIBUTE_HAS &&
+             this.value != ssel.getValue ()) {
+    return false;
+  }
+  if (this.localName == ssel.getLocalName ()) {
+    if (this.namespaceURI == ssel.getNamespaceURI ()) {
+      if (this.namespaceURI == null) {
+        if (this.prefix == ssel.getPrefix ()) {
+          return true;
+        }
+      } else {
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
+cx.fam.suika.y2005.CSS.Selectors.AttributeSelector.prototype.matchElement =
+function (elementNode, pseudoElements) {
+  var attrs = [];
+  if (this.namespaceURI == null && this.prefix == "*") {
+    var eattrs = elementNode.getAttributes ();
+    var eattrsl = eattrs.getLength ();
+    for (var i = 0; i < eattrsl; i++) {
+      var eattr = eattrs.item (i);
+      if (!eattr.getSpecified () ||
+          eattr.getLocalName () != this.localName) continue;
+      attrs.push (eattr.getValue ());
+    }
+  } else if (elementNode.hasAttributeNS (this.namespaceURI, this.localName)) {
+    //var attr = elementNode.getAttributeNS (this.namespaceURI, this.localName);
+    //if (attr == null || !attr.getSpecified ()) return false;
+    var attr = elementNode.getAttributeNS (this.namespaceURI, this.localName);
+    attrs.push (attr);
+    // TODO: |specified| check
+  }
+  
+  switch (this.operator) {
+  case this.SELECTORS_ATTRIBUTE_HAS:
+    return attrs.length > 0 ? true : false;
+  case this.SELECTORS_ATTRIBUTE_EQUALS:
+    for (var i = 0; i < attrs.length; i++) {
+      if (attrs[i] == this.value) {
+        return true;
+      }
+    }
+    return false;
+  case this.SELECTORS_ATTRIBUTE_INCLUDES:
+    for (var i = 0; i < attrs.length; i++) {
+      var vals = attrs[i].split (/\s+/);
+      for (var j = 0; j < vals.length; j++) {
+        if (vals[j] == this.value) {
+          return true;
+        }
+      }
+    }
+    return false;
+  case this.SELECTORS_ATTRIBUTE_DASHMATCH:
+    for (var i = 0; i < attrs.length; i++) {
+      var val = attrs[i];
+      if (val == this.value ||
+          val.substring (0, this.value.length + 1) == this.value + "-") {
+        return true;
+      }
+    }
+    return false;
+  case this.SELECTORS_ATTRIBUTE_PREFIXMATCH:
+    for (var i = 0; i < attrs.length; i++) {
+      var val = attrs[i];
+      if (val.substring (0, this.value.length) == this.value) {
+        return true;
+      }
+    }
+    return false;
+  case this.SELECTORS_ATTRIBUTE_SUFFIXMATCH:
+    for (var i = 0; i < attrs.length; i++) {
+      var val = attrs[i];
+      if (val.substring (val.length - this.value.length) == this.value) {
+        return true;
+      }
+    }
+    return false;
+  case this.SELECTORS_ATTRIBUTE_SUBSTRINGMATCH:
+    for (var i = 0; i < attrs.length; i++) {
+      if (attrs[i].indexOf (this.value) > -1) {
+        return true;
+      }
+    }
+    return false;
+  default:
+    return false;
+  }
+  /* TODO: Case-insensitive match if necessary */
+};
+
 cx.fam.suika.y2005.CSS.Selectors.AttributeSelector.prototype.getSelectorText =
 function () {
   var r = "[";
@@ -708,11 +1075,16 @@ function () {
                                                                  "*=" ;
     r += '"'
        + this.value.replace (/([\u000A\u000C"\\]|\u000D\u000A)/g,
-                             function () { return "\\" + RegExp.$1 })
+                             function (c) { return "\\" + c })
        + '"';
   }
   r += "]";
   return r;
+};
+
+cx.fam.suika.y2005.CSS.Selectors.AttributeSelector.prototype.getSpecificity =
+function () {
+  return new cx.fam.suika.y2005.CSS.Selectors.Specificity (0, 0, 1, 0);
 };
 
 cx.fam.suika.y2005.CSS.Selectors.AttributeSelector.prototype.toString = function () {
@@ -742,9 +1114,34 @@ function () {
   return this.className;
 };
 
+cx.fam.suika.y2005.CSS.Selectors.ClassSelector.prototype.isEqualSimpleSelector =
+function (ssel) {
+  if (ssel.getSimpleSelectorType () != this.SELECTORS_CLASS_SELECTOR) return false;
+  if (this.className == ssel.getClassName ()) {
+    return true;
+  }
+  return false;
+};
+
+cx.fam.suika.y2005.CSS.Selectors.ClassSelector.prototype.matchElement =
+function (elementNode, pseudoElements) {
+  var classes = elementNode.getClassNames ();
+  for (var i = 0; i < classes.length; i++) {
+    if (classes[i] == this.className) {
+      return true;
+    }
+  }
+  return false;
+};
+
 cx.fam.suika.y2005.CSS.Selectors.ClassSelector.prototype.getSelectorText =
 function () {
   return "." + cx.fam.suika.y2005.CSS.Selectors._EscapeIdent (this.className);
+};
+
+cx.fam.suika.y2005.CSS.Selectors.ClassSelector.prototype.getSpecificity =
+function () {
+  return new cx.fam.suika.y2005.CSS.Selectors.Specificity (0, 0, 1, 0);
 };
 
 cx.fam.suika.y2005.CSS.Selectors.ClassSelector.prototype.toString = function () {
@@ -772,10 +1169,34 @@ cx.fam.suika.y2005.CSS.Selectors.IDSelector.prototype.getId =
 function () {
   return this.id;
 };
+cx.fam.suika.y2005.CSS.Selectors.IDSelector.prototype.isEqualSimpleSelector =
+function (ssel) {
+  if (ssel.getSimpleSelectorType () != this.SELECTORS_ID_SELECTOR) return false;
+  if (this.id == ssel.getId ()) {
+    return true;
+  }
+  return false;
+};
+
+cx.fam.suika.y2005.CSS.Selectors.IDSelector.prototype.matchElement =
+function (elementNode, pseudoElements) {
+  var ids = elementNode.getIds ();
+  for (var i = 0; i < ids.length; i++) {
+    if (ids[i] == this.id) {
+      return true;
+    }
+  }
+  return false;
+};
 
 cx.fam.suika.y2005.CSS.Selectors.IDSelector.prototype.getSelectorText =
 function () {
   return "#" + cx.fam.suika.y2005.CSS.Selectors._EscapeIdent (this.id);
+};
+
+cx.fam.suika.y2005.CSS.Selectors.IDSelector.prototype.getSpecificity =
+function () {
+  return new cx.fam.suika.y2005.CSS.Selectors.Specificity (0, 1, 0, 0);
 };
 
 cx.fam.suika.y2005.CSS.Selectors.IDSelector.prototype.toString = function () {
@@ -841,16 +1262,94 @@ function () {
   return this.prefix;
 };
 
+cx.fam.suika.y2005.CSS.Selectors.PseudoClass.prototype.isEqualSimpleSelector =
+function (ssel) {
+  if (ssel.getSimpleSelectorType () != this.SELECTORS_PSEUDO_CLASS) return false;
+  if (this.localName == ssel.getClassLocalName () &&
+      this.namespaceURI == ssel.getClassNamespaceURI ()) {
+    return true;
+  }
+  return false;
+};
+
+cx.fam.suika.y2005.CSS.Selectors.PseudoClass.prototype.matchElement =
+function (elementNode, pseudoElements) {
+  if (cx.fam.suika.y2005.CSS.Selectors.PseudoClass._Impl
+      [this.namespaceURI][this.localName].matchElement (elementNode)) {
+    return true;
+  }
+  return false;
+};
+
 cx.fam.suika.y2005.CSS.Selectors.PseudoClass.prototype.getSelectorText =
 function () {
   return ":" + cx.fam.suika.y2005.CSS.Selectors._EscapeIdent (this.getClassName ());
+};
+
+cx.fam.suika.y2005.CSS.Selectors.PseudoClass.prototype.getSpecificity =
+function () {
+  return new cx.fam.suika.y2005.CSS.Selectors.Specificity (0, 0, 1, 0);
 };
 
 cx.fam.suika.y2005.CSS.Selectors.PseudoClass.prototype.toString = function () {
   return "[object SPseudoClass]";
 };
 
-
+cx.fam.suika.y2005.CSS.Selectors.PseudoClass._Impl = {};
+cx.fam.suika.y2005.CSS.Selectors.PseudoClass._Impl
+["urn:x-suika-fam-cx:selectors:"] = {
+  active: {
+    matchElement: function (el) {
+      return false;
+    }
+  },
+  checked: {
+    matchElement: function (el) {
+      if (el.getChecked && el.getChecked ()) {
+        return true;
+      }
+      return false;
+    }
+  },
+  disabled: {
+    matchElement: function (el) {
+      if (el.getDisabled && el.getDisabled ()) {
+        return true;
+      }
+      return false;
+    }
+  },
+  empty: {
+    matchElement: function (el) {
+      return !el.hasChildNodes ();
+    }
+  },
+  enabled: {
+    matchElement: function (el) {
+      if (el.getDisabled && el.getDisabled ()) {
+        return false;
+      }
+      return true;
+    }
+  },
+  root: {
+    matchElement: function (el) {
+      if (el.getParentNode () != null) {
+        return true;
+      }
+      return false;
+    }
+  }
+};
+cx.fam.suika.y2005.CSS.Selectors.PseudoClass._Impl
+["urn:x-suika-fam-cx:selectors:"]["first-child"] = {
+  matchElement: function (el) {
+    if (el.getPreviousElement () == null) {
+      return true;
+    }
+    return false;
+  }
+};
 
 /**
    Interface |SPseudoElement|
@@ -910,16 +1409,86 @@ function () {
   return this.prefix;
 };
 
+cx.fam.suika.y2005.CSS.Selectors.PseudoElement.prototype.isEqualSimpleSelector =
+function (ssel) {
+  if (ssel.getSimpleSelectorType () != this.SELECTORS_PSEUDO_ELEMENT) return false;
+  if (this.localName == ssel.getElementLocalName () &&
+      this.namespaceURI == ssel.getElementNamespaceURI ()) {
+    return true;
+  }
+  return false;
+};
+
+cx.fam.suika.y2005.CSS.Selectors.PseudoElement.prototype.matchElement =
+function (elementNode, pseudoElements) {
+  return false;
+};
+
 cx.fam.suika.y2005.CSS.Selectors.PseudoElement.prototype.getSelectorText =
 function () {
   return "::" + cx.fam.suika.y2005.CSS.Selectors._EscapeIdent (this.getElementName ());
 };
 
-cx.fam.suika.y2005.CSS.Selectors.PseudoElement.prototype.toString = function () {
-  return "[object SPseudoElement]";
+cx.fam.suika.y2005.CSS.Selectors.PseudoElement.prototype.getSpecificity =
+function () {
+  return new cx.fam.suika.y2005.CSS.Selectors.Specificity (0, 0, 0, 1);
 };
 
-/* Revision: $Date: 2005/11/02 15:14:40 $ */
+cx.fam.suika.y2005.CSS.Selectors.PseudoElement.prototype.toString = function () {
+  return this.getA () + "-" + this.getB () + "-" + this.getC () + "-" + this.getD ();
+};
+
+
+/**
+   Interface |SSpecificity|
+   
+   A |SSpecificity| object represents a specificity value.
+   
+     Note.  The meaning of |a|, |b|, and |c| in CSS levels 1 and 2.0 and
+            Selectors Candidate Recommendation on November 2001 is different
+            from one in CSS Level 2.1, as well as in this interface,
+            where they are called as |b|, |c|, and |d|.
+*/
+cx.fam.suika.y2005.CSS.Selectors.Specificity = function (a, b, c, d) {
+  this.a = a;
+  this.b = b;
+  this.c = c;
+  this.d = d;
+};
+
+/**
+   The |a| value, which is most significant.
+*/
+cx.fam.suika.y2005.CSS.Selectors.Specificity.prototype.getA = function () {
+  return this.a;
+};
+
+/**
+   The |b| value.
+*/
+cx.fam.suika.y2005.CSS.Selectors.Specificity.prototype.getB = function () {
+  return this.b;
+};
+
+/**
+   The |c| value.
+*/
+cx.fam.suika.y2005.CSS.Selectors.Specificity.prototype.getC = function () {
+  return this.c;
+};
+
+/**
+   The |d| value, which is less significant.
+*/
+cx.fam.suika.y2005.CSS.Selectors.Specificity.prototype.getD = function () {
+  return this.d;
+};
+
+cx.fam.suika.y2005.CSS.Selectors.Specificity.prototype.toString = function () {
+  return "[object SSpecificity]";
+};
+
+/* Revision: $Date: 2005/11/03 14:16:06 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

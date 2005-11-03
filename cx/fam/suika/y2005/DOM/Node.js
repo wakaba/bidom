@@ -246,7 +246,7 @@ cx.fam.suika.y2005.DOM.Node.Node.prototype.lookupNamespaceURI = function (pfx) {
     var as = this.getAttributes ();
     var asLength = as.getLength ();
     for (var i = 0; i < asLength; i++) {
-      var a = as.getItem (i);
+      var a = as.item (i);
       if (a.getNamespaceURI () == "http://www.w3.org/2002/xmlns/") {
         var ln = a.getLocalName ();
         var av = a.getValue ();
@@ -345,9 +345,30 @@ cx.fam.suika.y2005.DOM.Node.Node.prototype.getPrefix = function () {
 cx.fam.suika.y2005.DOM.Node.Node.prototype.setPrefix = function (newValue) {
   this._Node.prefix = newValue;
 };
+
 cx.fam.suika.y2005.DOM.Node.Node.prototype.getPreviousSibling = function () {
   return cx.fam.suika.y2005.DOM.Node.getDOMNode (this._Node.previousSibling);
 };
+
+/**
+   The previous element, i.e. an element which precedes to the node
+   and there is no other element between it and the node in document order
+   and whose parent element is the same element as the parent element
+   of the node.
+   [non-standard]
+*/
+cx.fam.suika.y2005.DOM.Node.Node.prototype.getPreviousElement = function () {
+  /* TODO: |EntityReference| support */
+  var el = this.getPreviousSibling ();
+  while (el != null) {
+    if (el.getNodeType () == el.ELEMENT_NODE) {
+      return el;
+    }
+    el = el.getPreviousSibling ();
+  }
+  return null;
+};
+
 cx.fam.suika.y2005.DOM.Node.Node.prototype.removeChild = function (c) {
   return cx.fam.suika.y2005.DOM.Node.getDOMNode
            (this._Node.removeChild (c._Node));
@@ -802,9 +823,31 @@ function (namespaceURI, localName) {
   var attr = this._Node.getAttributeNodeNS (namespaceURI, localName);
   return attr ? attr.value : "";
 };
+
+/**
+   Returns a snapshot list of identifiers of the element.
+   [non-standard]
+*/
+cx.fam.suika.y2005.DOM.Node.Element.prototype.getIds = function () {
+  var vals = []; /* TODO: |DOMStringList| */
+  var as = this.getAttributes ();
+  var asl = as.getLength ();
+  for (var i = 0; i < asl; i++) {
+    var a = as.item (i);
+    if (a.isId ()) {
+      var v = attrs.textContent.split (/\s+/);
+      for (var j in v) {
+        vals.push (v[j]);
+      }
+    }
+  }
+  /* TODO: identifier elements */
+  return vals;
+};
+
 cx.fam.suika.y2005.DOM.Node.Element.prototype.hasAttributeNS =
 function (namespaceURI, localName) {
-  return this._Node.hasAttributeNS (namespaceURI, localNamee);
+  return this._Node.hasAttributeNS (namespaceURI, localName);
 };
 cx.fam.suika.y2005.DOM.Node.Element.prototype.hasAttributes = function () {
   return this._Node._Attribute ? (this.getAttributes ().getLength () > 0)
@@ -812,7 +855,7 @@ cx.fam.suika.y2005.DOM.Node.Element.prototype.hasAttributes = function () {
 };
 cx.fam.suika.y2005.DOM.Node.Element.prototype.removeAttributeNS =
 function (namespaceURI, qualifiedName, localName) {
-  return this._Node.removetAttributeNS (namespaceURI, localNamee);
+  return this._Node.removetAttributeNS (namespaceURI, localName);
 };
 cx.fam.suika.y2005.DOM.Node.Element.prototype.setAttributeNS =
 function (namespaceURI, qualifiedName, newValue) {
@@ -843,10 +886,10 @@ function (namespaceURI, localName) {
   } else if (namespaceURI == "http://www.w3.org/XML/1998/namespace") {
     return this._Node.getAttribute ("xml:" + localName);
   } else {
-    if (!this._Attribute[namespaceURI]) {
+    if (!this._Node._Attribute[namespaceURI]) {
       return "";
-    } else if (this._Attribute[namespaceURI][localName]) {
-      return this._Attribute[namespaceURI][localName].getTextContent ();
+    } else if (this._Node._Attribute[namespaceURI][localName]) {
+      return this._Node._Attribute[namespaceURI][localName].getTextContent ();
     } else {
       return "";
     }
@@ -861,9 +904,9 @@ function (namespaceURI, localName) {
   } else if (namespaceURI == "http://www.w3.org/XML/1998/namespace") {
     return this._Node.getAttributeNode ("xml:" + localName) ? true : false;
   } else {
-    if (!this._Attribute[namespaceURI]) {
+    if (!this._Node._Attribute[namespaceURI]) {
       return false;
-    } else if (this._Attribute[namespaceURI][localName]) {
+    } else if (this._Node._Attribute[namespaceURI][localName]) {
       return true;
     } else {
       return false;
@@ -1013,6 +1056,36 @@ cx.fam.suika.y2005.DOM.Node.Attr.prototype.hasChildNodes = function () {
     return v ? true : false;
   }
 };
+
+/**
+   Whether the attribute is an identifier attribute or not.
+   [DOM Level 3 Core]
+*/
+cx.fam.suika.y2005.DOM.Node.Attr.prototype.isId = function () {
+  if (typeof (this._Node._IsId) != "undefined") {
+    return this._Node._IsId;
+  } else if (this._Node.isId) {
+    return true;
+  } else {
+    var ns = this.getNamespaceURI ();
+    var ln = this.getLocalName ();
+    if (ln == "id" && ns == "http://www.w3.org/XML/1998/namespace") {
+      return true;
+    }
+    var oel = this.getOwnerElement ();
+    if (oel) {
+      var ons = oel.getNamespaceURI ();
+      switch (ons) {
+      case "http://www.w3.org/1999/xhtml":
+        if (ln == "id" && ns == null) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+};
+
 cx.fam.suika.y2005.DOM.Node.Attr.prototype.getLastChild = function () {
   var n = cx.fam.suika.y2005.DOM.Node.AttrText._super.getLastChild.apply (this, []);
   if (n) {
@@ -1480,6 +1553,60 @@ cx.fam.suika.y2005.DOM.Node.WinIEAttributeMap.prototype.getLength = function () 
     }
   }
   return n;
+};
+
+
+/**
+   Class |SnapshotAttributeMap| implements |NamedNodeMap|
+   
+   A |SnapshotAttributeMap| is a set of attribute nodes that is not live.
+*/
+cx.fam.suika.y2005.DOM.Node.SnapshotAttributeMap = function () {
+  this.attr = [];
+};
+
+cx.fam.suika.y2005.DOM.Node.SnapshotAttributeMap.prototype.getNamedItemNS =
+function (namespaceURI, localName) {
+  if (this.attr[namespaceURI]) {
+    return this.attr[namespaceURI][localName];
+  }
+};
+
+cx.fam.suika.y2005.DOM.Node.SnapshotAttributeMap.prototype.item =
+function (index) {
+  var i = 0;
+  for (var ns in this.attr) {
+    for (var ln in this.attr[ns]) {
+      if (i++ == index) {
+        return this.attr[ns][ln];
+      }
+    }
+  }
+};
+
+cx.fam.suika.y2005.DOM.Node.SnapshotAttributeMap.prototype.getLength =
+function () {
+  var i = 0;
+  for (var ns in this.attr) {
+    for (var ln in this.attr[ns]) {
+      i++;
+    }
+  }
+  return i;
+};
+
+cx.fam.suika.y2005.DOM.Node.SnapshotAttributeMap.prototype.removeNamedItemNS =
+function (namespaceURI, localName) {
+  if (this.attr[namespaceURI] != null) {
+    this.attr[namespaceURI][localName] = undefined;
+  }
+};
+
+cx.fam.suika.y2005.DOM.Node.SnapshotAttributeMap.prototype.setNamedItemNS =
+function (node) {
+  var ns = node.getNamespaceURI ();
+  if (this.attr[ns] == null) this[ns] = [];
+  this.attr[ns][node.getLocalName ()] = node;
 };
 
 /* ***** BEGIN LICENSE BLOCK *****

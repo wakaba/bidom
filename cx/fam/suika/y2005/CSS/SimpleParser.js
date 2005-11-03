@@ -33,7 +33,40 @@ function (inputText) {
   this._IgnoreCharset = false;
   
   JSAN.require ("cx.fam.suika.y2005.CSS.Node");
-  return this._ParseStyleSheet ();
+  var ss = this._Factory.createCSSStyleSheet ();
+  this._NSContext = ss;
+  
+  this._ParseStyleSheet (ss);
+  
+  this._NSContext = null;
+  this._String = null;
+  return ss;
+};
+
+/**
+   Parses a |DOMString| as a group of selectors (|selectors-group|)
+   and returns it as a |SSelectorsGroup| object.
+*/
+cx.fam.suika.y2005.CSS.SimpleParser.prototype.parseSelectorsString =
+function (inputText, nsContext) {
+  this._String = inputText;
+  this._CurrentCharPos = 0;
+  this._CharStack = [];
+  this._TokenStack = [];
+  this._NSContext = nsContext;
+  
+  JSAN.require ("cx.fam.suika.y2005.CSS.Selectors");
+  var sel = this._ParseSelectorsGroup ();
+  
+  var token = this._PopToken (false);
+  if (token != null) {
+    sel = this._Factory.createSSelectorsGroup ();
+  }
+  
+  this._NSContext = null;
+  this._String = null;
+  
+  return sel;
 };
 
 /**
@@ -41,9 +74,7 @@ function (inputText) {
    and returns a |CSSStyleSheet| object.
 */
 cx.fam.suika.y2005.CSS.SimpleParser.prototype._ParseStyleSheet =
-function () {
-  var ss = this._Factory.createCSSStyleSheet ();
-  
+function (ss) {
   /* Whether a top-level |@charset| rule should be ignored or not */
   /* this._IgnoreCharset = false; -- should be set by the callee of the method -- */
   if (!this._IgnoreCharset) {
@@ -85,7 +116,6 @@ function () {
       this._IgnoreCharset = true;
     }
   }
-  return ss;
 };
 
 /**
@@ -184,7 +214,7 @@ function (/* |ATKEYWORD| */ token, parentNode) {
 */
 cx.fam.suika.y2005.CSS.SimpleParser.prototype._ParseRuleSet =
 function (parentNode) {
-  var sel = this._ParseSelectorsGroup (parentNode);
+  var sel = this._ParseSelectorsGroup ();
   var token = this._PopToken (false);
   if (sel.getLength () != 0) {
     if (token && token.type == "{") {
@@ -228,7 +258,7 @@ function (parentNode) {
   
   D: while (token && (token.type == "IDENT" || token.type == "DELIM")) {
     if (token.type == "IDENT") {
-      var prop = this._ExpandNamespacedIdent (parentNode, token.value.toLowerCase ());
+      var prop = this._ExpandNamespacedIdent (token.value.toLowerCase ());
       token = this._PopToken (false);
       if (token && token.type == "DELIM" && token.value == ":") {
         token = this._PopToken (false);
@@ -280,14 +310,14 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._PropertyValueParser = {};
 cx.fam.suika.y2005.CSS.SimpleParser.prototype._PropertyValueParser
 ["urn:x-suika-fam-cx:css:"] = {
   display: function (block, prop) {
-    var val = this._GetNextValue (block);
+    var val = this._GetNextValue ();
     if (val && val.getCSSValueType () == val.CSS_PRIMITIVE_VALUE &&
         val.getPrimitiveType () == val.CSS_IDENT) {
       var im = this._GetPriority ();
       if (im) {
         var p = this._Factory.createCSSPropertyNS
                   (prop.namespaceURI, prop.prefix, prop.localName, val);
-        if (typeof (im) != "boolean") p.setPriority (im);
+        p.setPriority (im);
         block.appendPropertyNode (p);
         return true;
       }
@@ -351,7 +381,7 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._PseudoClassParser
    Parses and returns the next value, if any, or |null|.
 */
 cx.fam.suika.y2005.CSS.SimpleParser.prototype._GetNextValue =
-function (/* NS & [base URI] */ context, token) {
+function (token) {
   if (token == null) token = this._PopToken (false);
   if (token == null) {
     return null;
@@ -365,7 +395,7 @@ function (/* NS & [base URI] */ context, token) {
   } else if (token.type == "NUMBER") { /* <number> or zero <length> */
     return this._Factory.createCSSNumericValue (token.value);
   } else if (token.type == "IDENT") {
-    var v = this._ExpandNamespacedIdent (context, token.value.toLowerCase ());
+    var v = this._ExpandNamespacedIdent (token.value.toLowerCase ());
     var val = this._Factory.createCSSKeywordValueNS
                 (v.namespaceURI, v.prefix, v.localName);
     return val;
@@ -415,9 +445,9 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._GetPriority = function () {
   var val = null;
   if (token != null && token.type == "DELIM" && token.value == "!") {
     token = this._PopToken (false);
-    if (token != null && token.type == "DELIM") {
+    if (token != null && token.type == "IDENT") {
       var v = this._ExpandNamespacedIdent (token.value.toLowerCase ());
-      val = this._Factory.createCSSKeywordValue
+      val = this._Factory.createCSSKeywordValueNS
               (v.namespaceURI, v.prefix, v.localName);
       token = this._PopToken (false);
     }
@@ -426,10 +456,12 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._GetPriority = function () {
       token.type == "}" ||
       token.type == ";") {
     if (token != null) this._TokenStack.push (token);
-    return val != null ? val : true;
+    return val != null ? val : this._Factory.createCSSKeywordValueNS
+                                 ("http://suika.fam.cx/~wakaba/archive/2005/cssc.",
+                                  "manakaic", "normal");
   } else {
     this._TokenStack.push (token);
-    return false;
+    return null;
   }
 };
 
@@ -439,7 +471,6 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._GetPriority = function () {
    
    Note that namespace extension to identifiers is a non-standard feature.
    
-   @param nsContext A namespace resolver.
    @param ident     The identifier to expand.  It should be normalized to
                     lower case if necessary.  The method does no such convertion.
    @param defaultNamespaceURI The namespace URI of the default namespace.
@@ -449,11 +480,11 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._GetPriority = function () {
            and |prefix|.
 */
 cx.fam.suika.y2005.CSS.SimpleParser.prototype._ExpandNamespacedIdent =
-function (nsContext, ident, defaultNamespaceURI) {
-  if (nsContext != null && ident.match (/^-([^-]+)-/)) {
+function (ident, defaultNamespaceURI) {
+  if (this._NSContext != null && ident.match (/^-([^-]+)-/)) {
     var prefix = RegExp.$1;
     var lname = ident.substring (prefix.length + 2);
-    var ns = nsContext.lookupNamespaceURI (prefix);
+    var ns = this._NSContext.lookupNamespaceURI (prefix);
       /* ISSUE: Is prefix case-sensitive? */
     if (ns != null) {
       return {namespaceURI: ns, localName: lname, prefix: prefix};
@@ -468,7 +499,7 @@ function (nsContext, ident, defaultNamespaceURI) {
    Parses a selector and returns it as a |SSelectorsGroup| object.
 */
 cx.fam.suika.y2005.CSS.SimpleParser.prototype._ParseSelectorsGroup =
-function (nsContext) {
+function () {
   var token = this._PopToken (false);
   var sels = this._Factory.createSSelectorsGroup ();
   Sel: while (token != null) {
@@ -491,7 +522,7 @@ function (nsContext) {
                               token.type == "DELIM" && token.value == "*")) {
           pfx = ln != null ? ln.toLowerCase () : "";
           if (pfx != "*") {
-            nsuri = nsContext.lookupNamespaceURI (pfx != "" ? pfx : null);
+            nsuri = this._NSContext.lookupNamespaceURI (pfx != "" ? pfx : null);
             if (pfx != "" && nsuri == null) {
               /* Invalid selector */
               return this._Factory.createSSelectorsGroup ();
@@ -507,9 +538,9 @@ function (nsContext) {
         }
       }
       
-      if (ln == null) {
+      if (ln == null || pfx == null) {
         pfx = null;
-        nsuri = nsContext.lookupNamespaceURI (null);
+        nsuri = this._NSContext.lookupNamespaceURI (null);
       }
       
       var tsel = this._Factory.createSTypeSelectorNS (nsuri, pfx, ln);
@@ -534,7 +565,7 @@ function (nsContext) {
             if (token != null) {
               if (token.type == "IDENT") {
                 var pctype = this._ExpandNamespacedIdent
-                                 (nsContext, token.value.toLowerCase (),
+                                 (token.value.toLowerCase (),
                                   "urn:x-suika-fam-cx:selectors:");
                 var pp = this._PseudoClassParser[pctype.namespaceURI] != null
                          ? this._PseudoClassParser[pctype.namespaceURI]
@@ -554,7 +585,7 @@ function (nsContext) {
                 token = this._PopToken (true);
                 if (token != null && token.type == "IDENT") {
                   var petype = this._ExpandNamespacedIdent
-                                 (nsContext, token.value.toLowerCase (),
+                                 (token.value.toLowerCase (),
                                   "urn:x-suika-fam-cx:selectors:");
                   var pp = this._PseudoElementParser[petype.namespaceURI] != null
                            ? this._PseudoElementParser[petype.namespaceURI]
@@ -573,7 +604,7 @@ function (nsContext) {
         } else if (token.type == "[" && !hasPseudoElement) {
           token = this._PopToken (false);
           var pfx = "";
-          var ns = null;
+          var nsuri = null;
           var ln = null;
           if (token != null && (token.type == "IDENT" ||
                                 token.type == "DELIM" && token.value == "*")) {
@@ -587,7 +618,7 @@ function (nsContext) {
             if (token != null && token.type == "IDENT") {
               pfx = ln != null ? ln.toLowerCase () : "";
               if (pfx != "*") {
-                nsuri = nsContext.lookupNamespaceURI (pfx != "" ? pfx : null);
+                if (pfx != "") nsuri = this._NSContext.lookupNamespaceURI (pfx);
                 if (pfx != "" && nsuri == null) {
                   /* Invalid selector */
                   return this._Factory.createSSelectorsGroup ();
@@ -799,7 +830,7 @@ function (nsContext) {
    Parses a media query and returns it as a |MQQuery| object.
 */
 cx.fam.suika.y2005.CSS.SimpleParser.prototype._ParseMediaQuery =
-function (nsContext) {
+function () {
   
 };
 
@@ -1405,7 +1436,7 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._PopChar = function () {
   return ch;
 };
 
-/* Revision: $Date: 2005/11/02 15:14:40 $ */
+/* Revision: $Date: 2005/11/03 14:16:06 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

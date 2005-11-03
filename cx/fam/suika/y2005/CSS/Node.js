@@ -103,9 +103,14 @@ cx.fam.suika.y2005.DOM.Implementation.DOMImplementation._AddFeature
        @param localName     The local name of the property.
        @param value         The value of the property.
     */
-    createCSSPropertyNS: function (namespaceURI, prefix, localName, value) {
+    createCSSPropertyNS: function (namespaceURI, prefix, localName, value, priority) {
+      if (priority == null) {
+        priority = this.createCSSKeywordValueNS
+                     ("http://suika.fam.cx/~wakaba/archive/2005/cssc.",
+                      "manakaic", "normal");
+      }
       return new cx.fam.suika.y2005.CSS.Node.PropertyDeclaration
-                   (namespaceURI, prefix, localName, value);
+                   (namespaceURI, prefix, localName, value, priority);
     }
   });
 
@@ -122,6 +127,8 @@ cx.fam.suika.y2005.CSS.Node.Node.prototype.getBaseURI =
 function () {
   if (this.parentRule) {
     return this.parentRule.getBaseURI ();
+  } else if (this.parentStyleSheet) {
+    return this.parentStyleSheet.getBaseURI ();
   } else {
     return null;
   }
@@ -167,6 +174,8 @@ cx.fam.suika.y2005.CSS.Node.Node.prototype.lookupNamespaceURI =
 function (prefix) {
   if (this.parentRule) {
     return this.parentRule.lookupNamespaceURI (prefix);
+  } else if (this.parentStyleSheet) {
+    return this.parentStyleSheet.lookupNamespaceURI (prefix);
   } else {
     return null;
   }
@@ -203,7 +212,8 @@ cx.fam.suika.y2005.CSS.Node.StyleSheet.prototype.getCSSNodeType = function () {
 */
 cx.fam.suika.y2005.CSS.Node.StyleSheet.prototype.appendCSSRule = function (newRule) {
   /* There should be |HIERARCHY_REQUEST_ERR|. */
-  newRule._SetParentRule (this);
+  newRule._SetParentStyleSheet (this);
+  newRule._SetParentRule (null);
   return this.cssRules.push (newRule);
 };
 
@@ -329,6 +339,9 @@ cx.fam.suika.y2005.CSS.Node.StyleSheet.prototype.getParentStyleSheet = function 
 cx.fam.suika.y2005.CSS.Node.StyleSheet.prototype._SetParentStyleSheet =
 function (newValue) {
   this.parentStyleSheet = newValue;
+  for (var i = 0; i < this.cssRules.length; i++) {
+    this.cssRules[i]._SetParentStyleSheet (newValue);
+  }
 };
 
 /**
@@ -373,8 +386,12 @@ cx.fam.suika.y2005.CSS.Node.Rule.inherits (cx.fam.suika.y2005.CSS.Node.Node);
    Appends a |CSSRule| to the list.
    [non-standard]
 */
-cx.fam.suika.y2005.CSS.Node.Rule.prototype.appendCSSRule
-  = cx.fam.suika.y2005.CSS.Node.StyleSheet.prototype.appendCSSRule;
+cx.fam.suika.y2005.CSS.Node.Rule.prototype.appendCSSRule = function (newRule) {
+  /* There should be |HIERARCHY_REQUEST_ERR|. */
+  newRule._SetParentStyleSheet (this.parentStyleSheet);
+  newRule._SetParentRule (this);
+  return this.cssRules.push (newRule);
+};
 
 /**
    The textual representation of the rule.
@@ -406,11 +423,16 @@ cx.fam.suika.y2005.CSS.Node.Rule.prototype._SetParentRule = function (newValue) 
   It might be |null| if the rule is not part of any style sheet
   in this implementation.
 */
-cx.fam.suika.y2005.CSS.Node.Rule.prototype.getParentRule = function () {
-  return this.parentRule;
+cx.fam.suika.y2005.CSS.Node.Rule.prototype.getParentStyleSheet = function () {
+  return this.parentStyleSheet;
 };
-cx.fam.suika.y2005.CSS.Node.Rule.prototype._SetParentRule = function (newValue) {
-  this.parentRule = newValue;
+cx.fam.suika.y2005.CSS.Node.Rule.prototype._SetParentStyleSheet = function (newValue) {
+  this.parentStyleSheet = newValue;
+  if (this.cssRules) {
+    for (var i = 0; i < this.cssRules.length; i++) {
+      this.cssRules[i]._SetParentStyleSheet (mewValue);
+    }
+  }
 };
 
 /**
@@ -642,10 +664,11 @@ function () {
    The selector object of the |@page| rule.
    [non-standard]
 */
-cx.fam.suika.y2005.CSS.Node.PageRule.prototype.getSelector = function () {
+cx.fam.suika.y2005.CSS.Node.PageRule.prototype.getSelectorObject = function () {
   return this.selector;
 };
-cx.fam.suika.y2005.CSS.Node.PageRule.prototype.setSelector = function (newValue) {
+cx.fam.suika.y2005.CSS.Node.PageRule.prototype.setSelectorObject =
+function (newValue) {
   this.selector = newValue;
 };
 
@@ -704,7 +727,7 @@ cx.fam.suika.y2005.CSS.Node.ImportRule.prototype.getCSSText =
 function () {
   var r = '@import "';
         + this.href.replace (/([\u000A\u000C"\\]|\u000D\u000A?)/g,
-                             function () { return "\\" + RegExp.$1 })
+                             function (c) { return "\\" + c })
         + '"';
   var mq = this.media.getMediaText ();
   if (mq.length > 0) {
@@ -774,7 +797,7 @@ cx.fam.suika.y2005.CSS.Node.CharsetRule.prototype.getCSSText =
 function () {
   return '@charset "'
        + this.encoding.replace (/([\u000A\u000C"\\]|\u000D\u000A?)/g,
-                                function () { return "\\" + RegExp.$1 })
+                                function (c) { return "\\" + c })
        + '";\n';
 };
 /* Not implemented: |setCSSText| */
@@ -820,7 +843,7 @@ function () {
   if (this.prefix != null) r += " " + this._EscapeIdent (this.prefix);
   r += ' "'
      + this.namespaceURI.replace (/([\u000A\u000C"\\]|\u000D\u000A?)/g,
-                                  function () { return "\\" + RegExp.$1 })
+                                  function (c) { return "\\" + c })
      + '";\n';
   return r;
 };
@@ -908,10 +931,10 @@ function () {
    The selector object of the rule set.
    [non-standard]
 */
-cx.fam.suika.y2005.CSS.Node.RuleSet.prototype.getSelector = function () {
+cx.fam.suika.y2005.CSS.Node.RuleSet.prototype.getSelectorObject = function () {
   return this.selector;
 };
-cx.fam.suika.y2005.CSS.Node.RuleSet.prototype.setSelector = function (newValue) {
+cx.fam.suika.y2005.CSS.Node.RuleSet.prototype.setSelectorObject = function (newValue) {
   this.selector = newValue;
 };
 
@@ -1054,12 +1077,13 @@ cx.fam.suika.y2005.CSS.Node.Declaration.prototype.toString = function () {
    i.e. a pair of property (or descriptor) name and value.
 */
 cx.fam.suika.y2005.CSS.Node.PropertyDeclaration =
-function (nsURI, prefix, lname, val) {
+function (nsURI, prefix, lname, val, pri) {
   cx.fam.suika.y2005.CSS.Node.PropertyDeclaration._superclass.apply (this, []);
   this.propertyNamespaceURI = nsURI;
   this.propertyPrefix = prefix != null ? prefix.toLowerCase () : null;
   this.propertyLocalName = lname.toLowerCase ();
   this.propertyValue = val;
+  this.priority = pri;
 };
 cx.fam.suika.y2005.CSS.Node.PropertyDeclaration.inherits
   (cx.fam.suika.y2005.CSS.Node.Declaration);
@@ -1075,12 +1099,19 @@ function () {
 */
 cx.fam.suika.y2005.CSS.Node.PropertyDeclaration.prototype.getCSSText =
 function () {
-  return this._EscapeIdent (this.getPropertyName ()) + ": "
-       + this.getPropertyValue ().getCSSText ();
+  var r = this._EscapeIdent (this.getPropertyName ()) + ": "
+        + this.getPropertyValue ().getCSSText ();
+  if (this.priority.namespaceURI == "http://suika.fam.cx/~wakaba/archive/2005/cssc." &&
+      this.priority.localName == "normal") {
+    //
+  } else {
+    r += " !" + this.priority.getCSSText ();
+  }
+  return r;
 };
 
 /**
-   The priority value of the property, if any, or |null|.
+   The priority value of the property.
 */
 cx.fam.suika.y2005.CSS.Node.PropertyDeclaration.prototype.getPriority =
 function () {
@@ -1184,7 +1215,7 @@ cx.fam.suika.y2005.CSS.RuleList.prototype.getLength = function () {
   return this.length;
 };
 
-/* Revision: $Date: 2005/11/02 12:59:21 $ */
+/* Revision: $Date: 2005/11/03 14:16:06 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

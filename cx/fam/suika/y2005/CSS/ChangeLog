@@ -1,3 +1,39 @@
+2005-11-03  Wakaba  <w@suika.fam.cx>
+
+	* Node.js (selectorObject): Attribute name has been changed
+	from |selector| to |selectorObject| to avoid confliction
+	with |selector| property of |page| object in WinIE's CSS object model,
+	whose value is of |String| (similar to |selectorText| attribute
+	in our model).
+	(createCSSPropertyNS): An optional parameter |priority| added.
+	(lookupNamespaceURI, baseURI): Gets value from |parentStyleSheet| if any.
+	(appendCSSRule): Sets |parentStyleSheet| attribute.
+	(PropertyDeclaration.getCSSText): |!important| declaration supported.
+	(PropertyDeclaration.priority): Now this attribute always has value.
+	
+	* Node.js, Value.js, Selectors.js: Use argument rather than
+	|RegExp.$1| in |replace| function (for compatibility with JScript).
+	
+	* Selectors.js: Loads |ElementClass| module and |DOM.Node| module
+	for matching.
+	(createSSpecificity): New method.
+	(SSelectorsGroup, SSelector): Don't extend |Array| class
+	for compatibility with JScript implementation.
+	(elementMatch, isEqualSimpleSelector): New methods.
+	(SSpecificity.d): New attribute.
+	
+	* SimpleParser.js: Namespace context parameters are removed; now
+	namespace context can be obtained from |this._NSContext| property.
+	(parseSelectorsString): New method.
+	
+	* Value.js (createCSSKeywordValueNS): Extended cascading keyword
+	namespace supported.
+
+2005-11-02  Wakaba  <w@suika.fam.cx>
+
+	* Selectors.js (specificity): New attribute.
+	(SSpecificity): New interface.
+
 2005-11-02  Wakaba  <w@suika.fam.cx>
 
 	* Selectors.js (createSTypeSelectorNS): Sets |prefix| |null| if |localName|

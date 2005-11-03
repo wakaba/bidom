@@ -42,8 +42,11 @@ cx.fam.suika.y2005.DOM.Implementation.DOMImplementation._AddFeature
         case "initial":
         case "-moz-initial":
           return new cx.fam.suika.y2005.CSS.Value.CascadeValue
-                   (namespaceURI, prefix, localName);
+                       (namespaceURI, prefix, localName);
         }
+      } else if (namespaceURI == "http://suika.fam.cx/~wakaba/archive/2005/cssc.") {
+        return new cx.fam.suika.y2005.CSS.Value.CascadeValue
+                     (namespaceURI, prefix, localName);
       }
       return new cx.fam.suika.y2005.CSS.Value.IdentValue
                (namespaceURI, prefix, localName);
@@ -133,9 +136,8 @@ cx.fam.suika.y2005.DOM.Implementation.DOMImplementation._AddFeature
 */
 cx.fam.suika.y2005.CSS.Value._EscapeIdent = function (s) {
   return s.replace
-           (/([\u0000-\u002C\u002E\u002F\u003A-\u0040\u005B-\u005E\u0080\u007B-\u007F]|^[0-9])/g,
-            function () {
-              var c = RegExp.$1;
+           (/([\u0000-\u002C\u002E\u002F\u003A-\u0040\u005B-\u005E\u0080\u007B-\u007F]|^[0-9]|^-$)/g,
+            function (c) {
               if (!c.match (/^[\u0000-\u0020\u007F]/)) {
                 return "\\" + c;
               } else {
@@ -421,7 +423,7 @@ cx.fam.suika.y2005.CSS.Value.StringValue.prototype.getValue = function () {
 cx.fam.suika.y2005.CSS.Value.StringValue.prototype.getCSSText = function () {
   return '"'
        + this.value.replace (/([\u000A\u000C"\\]|\u000D\u000A)/g,
-                             function () { return "\\" + RegExp.$1 })
+                             function (c) { return "\\" + c })
        + '"';
 };
 /* Not implemented: |setCSSText| */
@@ -577,7 +579,7 @@ cx.fam.suika.y2005.CSS.Value.URIValue.prototype.getValue = function () {
 cx.fam.suika.y2005.CSS.Value.StringValue.prototype.getCSSText = function () {
   return 'url('
        + this.value.replace (/([\u000A\u000C"'()\\]|\u000D\u000A)/g,
-                             function () { return "\\" + RegExp.$1 })
+                             function (c) { return "\\" + c })
        + ')';
 };
 /* Not implemented: |setCSSText| */
@@ -681,7 +683,7 @@ cx.fam.suika.y2005.CSS.Value.ValueList.prototype.toString = function () {
   return "[object CSSValueList]";
 };
 
-/* Revision: $Date: 2005/11/02 12:59:21 $ */
+/* Revision: $Date: 2005/11/03 14:16:06 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.
