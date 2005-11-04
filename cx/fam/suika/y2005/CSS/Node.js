@@ -214,7 +214,7 @@ cx.fam.suika.y2005.CSS.Node.StyleSheet.prototype.appendCSSRule = function (newRu
   /* There should be |HIERARCHY_REQUEST_ERR|. */
   newRule._SetParentStyleSheet (this);
   newRule._SetParentRule (null);
-  return this.cssRules.push (newRule);
+  return this.cssRules.v.push (newRule);
 };
 
 /**
@@ -249,8 +249,8 @@ cx.fam.suika.y2005.CSS.Node.StyleSheet.prototype.getCSSRules = function () {
 cx.fam.suika.y2005.CSS.Node.StyleSheet.prototype.getCSSText = function () {
   var r = "";
   var lastType = this.CSS_UNKNOWN_RULE_NODE;
-  for (var i = 0; i < this.cssRules.length; i++) {
-    var rule = this.cssRules[i];
+  for (var i = 0; i < this.cssRules.v.length; i++) {
+    var rule = this.cssRules.v[i];
     if (lastType == this.CSS_RULE_SET_NODE ||
         rule.getCSSNodeType () == this.CSS_RULE_SET_NODE) {
       r += "\n";
@@ -301,8 +301,8 @@ cx.fam.suika.y2005.CSS.Node.StyleSheet.prototype.lookupNamespaceURI =
 function (prefix) {
   if (prefix != null) prefix = prefix.toLowerCase ();
   var uri = null;
-  for (var i = 0; i < this.cssRules.length; i++) {
-    var rule = this.cssRules[i];
+  for (var i = 0; i < this.cssRules.v.length; i++) {
+    var rule = this.cssRules.v[i];
     var ruleType = rule.getType ();
     if (ruleType == rule.NAMESPACE_RULE) {
       if (rule.getPrefix () == prefix) {
@@ -339,8 +339,8 @@ cx.fam.suika.y2005.CSS.Node.StyleSheet.prototype.getParentStyleSheet = function 
 cx.fam.suika.y2005.CSS.Node.StyleSheet.prototype._SetParentStyleSheet =
 function (newValue) {
   this.parentStyleSheet = newValue;
-  for (var i = 0; i < this.cssRules.length; i++) {
-    this.cssRules[i]._SetParentStyleSheet (newValue);
+  for (var i = 0; i < this.cssRules.v.length; i++) {
+    this.cssRules.v[i]._SetParentStyleSheet (newValue);
   }
 };
 
@@ -360,7 +360,7 @@ function (newValue) {
    The Internet media type of the style sheet.
    [DOM Level 2 Style Sheets]
 */
-cx.fam.suika.y2005.CSS.Node.StyleSheet.prototype.getTitle = function () {
+cx.fam.suika.y2005.CSS.Node.StyleSheet.prototype.getType = function () {
   return "text/css";
 };
 
@@ -390,7 +390,7 @@ cx.fam.suika.y2005.CSS.Node.Rule.prototype.appendCSSRule = function (newRule) {
   /* There should be |HIERARCHY_REQUEST_ERR|. */
   newRule._SetParentStyleSheet (this.parentStyleSheet);
   newRule._SetParentRule (this);
-  return this.cssRules.push (newRule);
+  return this.cssRules.v.push (newRule);
 };
 
 /**
@@ -429,8 +429,8 @@ cx.fam.suika.y2005.CSS.Node.Rule.prototype.getParentStyleSheet = function () {
 cx.fam.suika.y2005.CSS.Node.Rule.prototype._SetParentStyleSheet = function (newValue) {
   this.parentStyleSheet = newValue;
   if (this.cssRules) {
-    for (var i = 0; i < this.cssRules.length; i++) {
-      this.cssRules[i]._SetParentStyleSheet (mewValue);
+    for (var i = 0; i < this.cssRules.v.length; i++) {
+      this.cssRules.v[i]._SetParentStyleSheet (mewValue);
     }
   }
 };
@@ -558,8 +558,8 @@ function () {
     r += " " + mq;
   }
   r += " {\n\n";
-  for (var i = 0; i < this.cssRules.length; i++) {
-    r += this.cssRules[i].getCSSText () + "\n";
+  for (var i = 0; i < this.cssRules.v.length; i++) {
+    r += this.cssRules.v[i].getCSSText () + "\n";
   }
   r += "}\n";
   return r;
@@ -1018,12 +1018,24 @@ function () {
 };
 
 /**
-   The number of properties in the declaration block.
+   The number of declarations in the declaration block.
    [non-standard]
 */
 cx.fam.suika.y2005.CSS.Node.StyleDeclaration.prototype.getDeclarationLength =
 function () {
   return this.decls.length;
+};
+
+/**
+   Returns the |index|th declaration in the declaration block, if any, or |null|.
+   [non-standard]
+   
+   @param index The index of the declaration.
+   @return The declaration object or |null|.
+*/
+cx.fam.suika.y2005.CSS.Node.StyleDeclaration.prototype.getDeclarationNode =
+function (index) {
+  return this.decls[index];
 };
 
 /*
@@ -1131,16 +1143,16 @@ function () {
   if (this.propertNamePrefix == null) {
     return this.propertyLocalName;
   } else {
-    return "-" + this.propertyNamePrefix + "-" + this.propertyLocalName;
+    return "-" + this.propertyPrefix + "-" + this.propertyLocalName;
   }
 };
-cx.fam.suika.y2005.CSS.Node.PropertyDeclaration.prototype.getPropertyNamePrefix =
+cx.fam.suika.y2005.CSS.Node.PropertyDeclaration.prototype.getPropertyPrefix =
 function () {
-  return this.propertyName;
+  return this.propertyPrefix;
 };
-cx.fam.suika.y2005.CSS.Node.PropertyDeclaration.prototype.setPropertyNamePrefix =
+cx.fam.suika.y2005.CSS.Node.PropertyDeclaration.prototype.setPropertyPrefix =
 function (newValue) {
-  this.propertyNamePrefix = newValue.toLowerCase ();
+  this.propertyPrefix = newValue.toLowerCase ();
 };
 cx.fam.suika.y2005.CSS.Node.PropertyDeclaration.prototype.getPropertyNamespaceURI =
 function () {
@@ -1164,15 +1176,26 @@ cx.fam.suika.y2005.CSS.Node.PropertyDeclaration.prototype.toString = function ()
    Interface |StyleSheetList|
 */
 cx.fam.suika.y2005.CSS.StyleSheetList = function () {
+  this.v = [];
 };
-cx.fam.suika.y2005.CSS.StyleSheetList.inherits (Array);
+
+/**
+   Appends a style sheet to the last of the list.
+   [non-standard]
+   
+   @param styleSheet    The style sheet to add.
+   @throw DOMException  |NO_MODIFICATION_ALLOWED_ERR|: If the list is read-only.
+*/
+cx.fam.suika.y2005.CSS.StyleSheetList.prototype.addStyleSheet = function (styleSheet) {
+  this.v.push (styleSheet);
+};
 
 /**
    The |index|th style sheet in the list, if any, or |null| otherwise.
    [DOM Level 2 Style Sheet]
 */
 cx.fam.suika.y2005.CSS.StyleSheetList.prototype.item = function (index) {
-  return this[index];
+  return this.v[index];
 };
 
 /**
@@ -1180,7 +1203,7 @@ cx.fam.suika.y2005.CSS.StyleSheetList.prototype.item = function (index) {
    [DOM Level 2 Style Sheet]
 */
 cx.fam.suika.y2005.CSS.StyleSheetList.prototype.getLength = function () {
-  return this.length;
+  return this.v.length;
 };
 
 cx.fam.suika.y2005.CSS.StyleSheetList.prototype.toString = function () {
@@ -1192,19 +1215,35 @@ cx.fam.suika.y2005.CSS.StyleSheetList.prototype.toString = function () {
    Interface |CSSRuleList|
 */
 cx.fam.suika.y2005.CSS.RuleList = function () {
+  this.v = [];
 };
-cx.fam.suika.y2005.CSS.RuleList.inherits (Array);
+
+/**
+   Appends a CSS rule to the list.
+   [non-standard]
+   
+     Note.  In the current implementation this method does not set
+            |parentRule| and |parentStyleSheet| properties; use
+            |CSSRule.appendCSSRule| or |CSSStyleSheet.appendCSSRule|
+            method instead.
+            This method is intended for contexts where the |CSSRuleList| is
+            not part of any CSS style sheet.
+   
+   @param rule          The rule to add.
+   @throw DOMException  |NO_MODIFICATION_ALLOWED_ERR|: If the list is read-only.
+                        |HIERARCHY_REQUEST_ERR|: If the type of rule is not
+                        allowed in the list.
+*/
+cx.fam.suika.y2005.CSS.RuleList.prototype.addCSSRule = function (rule) {
+  this.v.push (rule);
+};
 
 /**
    The |index|th rule in the list, if any, or |null| otherwise.
    [DOM Level 2 CSS]
 */
 cx.fam.suika.y2005.CSS.RuleList.prototype.item = function (index) {
-  return this[index];
-};
-
-cx.fam.suika.y2005.CSS.RuleList.prototype.toString = function () {
-  return "[object CSSRuleList]";
+  return this.v[index];
 };
 
 /**
@@ -1212,10 +1251,14 @@ cx.fam.suika.y2005.CSS.RuleList.prototype.toString = function () {
    [DOM Level 2 CSS]
 */
 cx.fam.suika.y2005.CSS.RuleList.prototype.getLength = function () {
-  return this.length;
+  return this.v.length;
 };
 
-/* Revision: $Date: 2005/11/03 14:16:06 $ */
+cx.fam.suika.y2005.CSS.RuleList.prototype.toString = function () {
+  return "[object CSSRuleList]";
+};
+
+/* Revision: $Date: 2005/11/04 10:38:29 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

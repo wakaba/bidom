@@ -1,3 +1,29 @@
+2005-11-04  Wakaba  <w@suika.fam.cx>
+
+	* Property.js: New script.
+	
+	* Node.js (CSSRuleList): Changed from |Array| superclass to
+	has-a |Array| class.
+	(getDeclarationNode): New method.
+	(addStyleSheet): New method.
+	(addCSSRule): New method.
+	
+	* Selectors.js (matchElement): If |pseudoElements| parameter
+	is set to |null|, it ignores any pseudo elements.  (It was
+	defined to be same as an empty object but it has been changed.)
+	(getPseudoElements): New method.
+	(SimpleSelectorSequence constructor): Creates a universal selector
+	if no type selector argument is specified.
+	(_GetPseudoElementHashKey): New internal method.
+	(compareSpecificity): New method.
+	
+	* SimpleParser.js (_ParsePriority): Ignores the declaration
+	if the |!| token is not followed by an |IDENT| token.
+	
+	* Value.js (CSS_CASCADING_VALUE): New constant.
+	(CSSCascadeValue.cssValueType): Exhibits |CSS_CASCADING_VALUE|.
+	(CSSIdentValue.getNamespaceURI): Typo fixed.
+
 2005-11-03  Wakaba  <w@suika.fam.cx>
 
 	* Node.js (selectorObject): Attribute name has been changed

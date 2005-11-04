@@ -1433,17 +1433,17 @@ cx.fam.suika.y2005.DOM.Node.NodeList.prototype.getSnapshot = function () {
 };
 
 cx.fam.suika.y2005.DOM.Node.NodeListArray = function () {
+  this.v = [];
 };
-cx.fam.suika.y2005.DOM.Node.NodeListArray.inherits (Array);
 
 cx.fam.suika.y2005.DOM.Node.NodeListArray.prototype.getSnapshot = function () {
   return this;
 };
 cx.fam.suika.y2005.DOM.Node.NodeListArray.prototype.getLength = function () {
-  return this.length;
+  return this.v.length;
 };
 cx.fam.suika.y2005.DOM.Node.NodeListArray.prototype.item = function (n) {
-  return this[n];
+  return this.v[n];
 };
 
 cx.fam.suika.y2005.DOM.Node.ChildNodeList = function (nl) {

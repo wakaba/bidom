@@ -179,6 +179,11 @@ cx.fam.suika.y2005.CSS.Value.Value.prototype.CSS_INHERIT         = 0;
 cx.fam.suika.y2005.CSS.Value.Value.prototype.CSS_PRIMITIVE_VALUE = 1;
 cx.fam.suika.y2005.CSS.Value.Value.prototype.CSS_VALUE_LIST      = 2;
 cx.fam.suika.y2005.CSS.Value.Value.prototype.CSS_CUSTOM          = 3;
+/**
+   A keyword value to control cascading and inheriting other than |inherit|.
+   [non-standard]
+*/
+cx.fam.suika.y2005.CSS.Value.Value.prototype.CSS_CASCADING_VALUE = 10001;
 
 cx.fam.suika.y2005.CSS.Value.Value.prototype.toString = function () {
   return "[object CSSValue]";
@@ -204,7 +209,7 @@ cx.fam.suika.y2005.CSS.Value.Value.prototype.getCSSValueType = function () {
       this.localName == "inherit") {
     return this.CSS_INHERIT;
   } else {
-    return this.CSS_CUSTOM;
+    return this.CSS_CASCADING_VALUE;
   }
 };
 
@@ -466,7 +471,7 @@ cx.fam.suika.y2005.CSS.Value.IdentValue.prototype.getName =
    The namespace URI of the identifier.
 */
 cx.fam.suika.y2005.CSS.Value.IdentValue.prototype.getNamespaceURI =
-  cx.fam.suika.y2005.CSS.Value.CascadeValue.prototype.getLocalNamespaceURI;
+  cx.fam.suika.y2005.CSS.Value.CascadeValue.prototype.getNamespaceURI;
 
 /**
    The namespace prefix of the identifier, or |null| if no prefix.
@@ -683,7 +688,7 @@ cx.fam.suika.y2005.CSS.Value.ValueList.prototype.toString = function () {
   return "[object CSSValueList]";
 };
 
-/* Revision: $Date: 2005/11/03 14:16:06 $ */
+/* Revision: $Date: 2005/11/04 10:38:29 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

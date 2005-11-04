@@ -212,15 +212,16 @@ cx.fam.suika.y2005.CSS.Selectors.SelectorsGroup.prototype.getLength = function (
    Tests whether the selector matched to an element node or not.
    
    @param elementNode     An element node to test.
-   @param pseudoElements  A |SSimpleSelectorSequence| object, or |null|,
-                          which is equals to an empty |SSimpleSelectorSequence|.
-                          The selector and the |elementNode| match if and only if 
-                          the list of pseudo elements in the selector is equal
-                          to the list of pseudo elements in the element node.
+   @param pseudoElements  A |SSimpleSelectorSequence| object, or |null|.
+                          The selector and the |elementNode| match if
+                          |pseudoElements| is non-|null| and the list of pseudo 
+                          elements in the selector is equal to the list of pseudo 
+                          elements in the element node, or if |pseudoElements|
+                          is |null|.
                           
                               Note.  Any simple selector other than pseudo element
                                      in |pseudoElements| is ignored.
-  @return If match, |true|, or |false| otherwise.
+   @return If match, |true|, or |false| otherwise.
 */
 cx.fam.suika.y2005.CSS.Selectors.SelectorsGroup.prototype.matchElement =
 function (elementNode, pseudoElements) {
@@ -304,6 +305,17 @@ cx.fam.suika.y2005.CSS.Selectors.Selector
 .prototype.SELECTORS_COMBINATOR_INDIRECT_ADJACENT_SIBLING = 4;
 
 /**
+   Returns a |SSimpleSelectorSequence| object that contains pseudo
+   elements.
+   
+   @return A pseudo element selector list (possibly empty) or |null| if
+           the selector is empty.
+*/
+cx.fam.suika.y2005.CSS.Selectors.Selector.prototype.getPseudoElements = function () {
+  return this.v[this.v.length - 1];
+};
+
+/**
    Returns the |index|th simple selector sequence in the selector, if any, or |null|.
    
    @param index The ordinal index of the sequence, starting from zero.
@@ -326,11 +338,12 @@ cx.fam.suika.y2005.CSS.Selectors.Selector.prototype.getLength = function () {
    Tests whether the selector matched to an element node or not.
    
    @param elementNode     An element node to test.
-   @param pseudoElements  A |SSimpleSelectorSequence| object, or |null|,
-                          which is equals to an empty |SSimpleSelectorSequence|.
-                          The selector and the |elementNode| match if and only if 
-                          the list of pseudo elements in the selector is equal
-                          to the list of pseudo elements in the element node.
+   @param pseudoElements  A |SSimpleSelectorSequence| object, or |null|.
+                          The selector and the |elementNode| match if
+                          |pseudoElements| is non-|null| and the list of pseudo 
+                          elements in the selector is equal to the list of pseudo 
+                          elements in the element node, or if |pseudoElements|
+                          is |null|.
                           
                               Note.  Any simple selector other than pseudo element
                                      in |pseudoElements| is ignored.
@@ -343,19 +356,21 @@ function (elementNode, pseudoElements) {
   if (!this.v[i].matchElement (elementNode, pseudoElements)) {
     return false;
   }
+  
+  var epe = new cx.fam.suika.y2005.CSS.Selectors.SimpleSelectorSequence (null);
   SSS: for (; i > 0; i--) {
     switch (this.cmbs[i + 1]) {
     case this.SELECTORS_COMBINATOR_CHILD:
       elementNode = elementNode.getParentElement ();
       if (elementNode == null) return false;
-      if (!this.v[i].matchElement (elementNode, null)) {
+      if (!this.v[i].matchElement (elementNode, epe)) {
         return false;
       }
       continue SSS;
     case this.SELECTORS_COMBINATOR_DESCENDANT:
       elementNode = elementNode.getParentElement ();
       while (elementNode != null) {
-        if (this.v[i].matchElement (elementNode, null)) {
+        if (this.v[i].matchElement (elementNode, epe)) {
           continue SSS;
         }
         elementNode = elementNode.getParentElement ();
@@ -364,14 +379,14 @@ function (elementNode, pseudoElements) {
     case this.SELECTORS_COMBINATOR_DIRECT_ADJACENT_SIBLING:
       elementNode = elementNode.getPreviousElement ();
       if (elementNode == null) return false;
-      if (!this.v[i].matchElement (elementNode, null)) {
+      if (!this.v[i].matchElement (elementNode, epe)) {
         return false;
       }
       continue SSS;
     case this.SELECTORS_COMBINATOR_INDIRECT_ADJACENT_SIBLING:
       elementNode = elementNode.getPreviousElement ();
       while (elementNode != null) {
-        if (this.v[i].matchElement (elementNode, null)) {
+        if (this.v[i].matchElement (elementNode, epe)) {
           continue SSS;
         }
         elementNode = elementNode.getPreviousElement ();
@@ -413,7 +428,7 @@ function () {
 };
 
 /**
-   The specificity of the simple selector.
+   The specificity of the selector.
 */
 cx.fam.suika.y2005.CSS.Selectors.Selector.prototype.getSpecificity =
 function () {
@@ -452,7 +467,10 @@ cx.fam.suika.y2005.CSS.Selectors.Selector.prototype.toString = function () {
             object model while it is semantically part of selectors in Selectors.
 */
 cx.fam.suika.y2005.CSS.Selectors.SimpleSelectorSequence = function (typeSelector) {
-  this.typesel = typeSelector;
+  this.typesel = typeSelector != null
+                   ? typeSelector
+                   : new cx.fam.suika.y2005.CSS.Selectors.TypeSelector
+                           (null, null, null);
   this.sels = [];
   this.pels = [];
 };
@@ -480,14 +498,35 @@ cx.fam.suika.y2005.CSS.Selectors.SimpleSelectorSequence.prototype.appendSimpleSe
 };
 
 /**
+   Returns a hash key created from pseudo elements in the simple selector sequence.
+   The hash key...
+       - is an empty string if and only if there is no pseudo element.
+       - matches as string to the hash key from another simple selector sequence
+         if and only if the numbers of their pseudo elements are equal and
+         pseudo elements with same index are equal in |isEqualSimpleSelector|
+         equality.
+       - does not necessarily match to the textual representation of the selector.
+*/
+cx.fam.suika.y2005.CSS.Selectors.SimpleSelectorSequence.prototype
+._GetPseudoElementHashKey
+= function () {
+  var r = "";
+  for (var i = 0; i < this.pels.length; i++) {
+    r += this.pels[i]._GetPseudoElementHashKey ();
+  }
+  return r;
+};
+
+/**
    Tests whether the selector matched to an element node or not.
    
    @param elementNode     An element node to test.
-   @param pseudoElements  A |SSimpleSelectorSequence| object, or |null|,
-                          which is equals to an empty |SSimpleSelectorSequence|.
-                          The selector and the |elementNode| match if and only if 
-                          the list of pseudo elements in the selector is equal
-                          to the list of pseudo elements in the element node.
+   @param pseudoElements  A |SSimpleSelectorSequence| object, or |null|.
+                          The selector and the |elementNode| match if
+                          |pseudoElements| is non-|null| and the list of pseudo 
+                          elements in the selector is equal to the list of pseudo 
+                          elements in the element node, or if |pseudoElements|
+                          is |null|.
                           
                               Note.  Any simple selector other than pseudo element
                                      in |pseudoElements| is ignored.
@@ -496,25 +535,25 @@ cx.fam.suika.y2005.CSS.Selectors.SimpleSelectorSequence.prototype.appendSimpleSe
 cx.fam.suika.y2005.CSS.Selectors.SimpleSelectorSequence.prototype.matchElement =
 function (elementNode, pseudoElements) {
   /* Pseudo element specifications */
-  if (pseudoElements == null) {
-    if (this.pels.length != 0) return false;
-  } else if (this.pels.length != pseudoElements.getPseudoElementLength ()) {
-    return false;
-  }
-  for (var i = 0; i < this.pels.length; i++) {
-    if (!this.pels[i].isEqualSimpleSelector (pseudoElements.getPseudoElement (i))) {
+  if (pseudoElements != null) {
+    if (this.pels.length != pseudoElements.getPseudoElementLength ()) {
       return false;
+    }
+    for (var i = 0; i < this.pels.length; i++) {
+      if (!this.pels[i].isEqualSimpleSelector (pseudoElements.getPseudoElement (i))) {
+        return false;
+      }
     }
   }
   
   /* Type or universal selector vs element type */
-  if (!this.typesel.matchElement (elementNode)) {
+  if (!this.typesel.matchElement (elementNode, null)) {
     return false;
   }
   
   /* Other simple selectors */
   for (var i = 0; i < this.sels.length; i++) {
-    if (!this.sels[i].matchElement (elementNode)) {
+    if (!this.sels[i].matchElement (elementNode, null)) {
       return false;
     }
   }
@@ -661,7 +700,7 @@ function (ssel) {
    Tests whether the selector matched to an element node or not.
    
    @param elementNode     An element node to test.
-   @param pseudoElements  This parameter is ignored.
+   @param pseudoElements  If non-|null|, |false| is returned.  Otherwise, ignored.
    @return If match, |true|, or |false| otherwise.
 */
 cx.fam.suika.y2005.CSS.Selectors.SimpleSelector.prototype.matchElement =
@@ -808,6 +847,7 @@ function (ssel) {
 
 cx.fam.suika.y2005.CSS.Selectors.TypeSelector.prototype.matchElement =
 function (elementNode, pseudoElements) {
+  if (pseudoElements != null) return false;
   if (this.localName == "*" ||
       this.localName == elementNode.getLocalName ()) {
     if (this.prefix == "*") {
@@ -975,6 +1015,7 @@ function (ssel) {
 
 cx.fam.suika.y2005.CSS.Selectors.AttributeSelector.prototype.matchElement =
 function (elementNode, pseudoElements) {
+  if (pseudoElements != null) return false;
   var attrs = [];
   if (this.namespaceURI == null && this.prefix == "*") {
     var eattrs = elementNode.getAttributes ();
@@ -1125,6 +1166,7 @@ function (ssel) {
 
 cx.fam.suika.y2005.CSS.Selectors.ClassSelector.prototype.matchElement =
 function (elementNode, pseudoElements) {
+  if (pseudoElements != null) return false;
   var classes = elementNode.getClassNames ();
   for (var i = 0; i < classes.length; i++) {
     if (classes[i] == this.className) {
@@ -1180,6 +1222,7 @@ function (ssel) {
 
 cx.fam.suika.y2005.CSS.Selectors.IDSelector.prototype.matchElement =
 function (elementNode, pseudoElements) {
+  if (pseudoElements != null) return false;
   var ids = elementNode.getIds ();
   for (var i = 0; i < ids.length; i++) {
     if (ids[i] == this.id) {
@@ -1274,6 +1317,7 @@ function (ssel) {
 
 cx.fam.suika.y2005.CSS.Selectors.PseudoClass.prototype.matchElement =
 function (elementNode, pseudoElements) {
+  if (pseudoElements != null) return false;
   if (cx.fam.suika.y2005.CSS.Selectors.PseudoClass._Impl
       [this.namespaceURI][this.localName].matchElement (elementNode)) {
     return true;
@@ -1409,6 +1453,11 @@ function () {
   return this.prefix;
 };
 
+cx.fam.suika.y2005.CSS.Selectors.PseudoElement.prototype._GetPseudoElementHashKey
+= function () {
+  return "<" + this.namespaceURI + ">" + this.localName;
+};
+
 cx.fam.suika.y2005.CSS.Selectors.PseudoElement.prototype.isEqualSimpleSelector =
 function (ssel) {
   if (ssel.getSimpleSelectorType () != this.SELECTORS_PSEUDO_ELEMENT) return false;
@@ -1478,6 +1527,29 @@ cx.fam.suika.y2005.CSS.Selectors.Specificity.prototype.getC = function () {
 };
 
 /**
+   Compares the specificity value with another value.
+   
+   @param another A specificity value.
+   @return If the specificity value is less than, equal to, or greater
+           than |another|, the method, then the method returns a
+           negative, zero, or positive value respectively.
+*/
+cx.fam.suika.y2005.CSS.Selectors.Specificity.prototype.compareSpecificity =
+function (another) {
+  var v = this.a - another.getA ();
+  if (v == 0) {
+    v = this.b - another.getB ();
+    if (v == 0) {
+      v = this.c - another.getC ();
+      if (v == 0) {
+        v = this.d - another.getD ();
+      }
+    }
+  }
+  return v;
+};
+
+/**
    The |d| value, which is less significant.
 */
 cx.fam.suika.y2005.CSS.Selectors.Specificity.prototype.getD = function () {
@@ -1488,7 +1560,7 @@ cx.fam.suika.y2005.CSS.Selectors.Specificity.prototype.toString = function () {
   return "[object SSpecificity]";
 };
 
-/* Revision: $Date: 2005/11/03 14:16:06 $ */
+/* Revision: $Date: 2005/11/04 10:38:29 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

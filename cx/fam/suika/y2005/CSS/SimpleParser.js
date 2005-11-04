@@ -450,6 +450,8 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._GetPriority = function () {
       val = this._Factory.createCSSKeywordValueNS
               (v.namespaceURI, v.prefix, v.localName);
       token = this._PopToken (false);
+    } else {
+      return null;
     }
   }
   if (token == null ||
@@ -1436,7 +1438,7 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._PopChar = function () {
   return ch;
 };
 
-/* Revision: $Date: 2005/11/03 14:16:06 $ */
+/* Revision: $Date: 2005/11/04 10:38:29 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

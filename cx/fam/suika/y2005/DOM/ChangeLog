@@ -1,3 +1,8 @@
+2005-11-04  Wakaba  <w@suika.fam.cx>
+
+	* Node.js (NodeListArray): Don't inherit |Array| but has-an |Array|
+	for compatibility with WinIE 6.
+
 2005-11-03  Wakaba  <w@suika.fam.cx>
 
 	* Node.js (Node.previousElement): New attribute.
