@@ -1,3 +1,12 @@
+2005-11-05  Wakaba  <w@suika.fam.cx>
+
+	* HTML.js (getSHTMLElement): Use specialized class for
+	element types if available.  A set of specialized class
+	definition added.
+	
+	* Node.js (_FeatureModule): |WebUA.VDocumentCSS| module added.
+	(_ElementTypeClass): Modifications to |WebUA| submodules reflected.
+
 2005-11-04  Wakaba  <w@suika.fam.cx>
 
 	* Node.js (NodeListArray): Don't inherit |Array| but has-an |Array|

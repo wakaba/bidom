@@ -1,3 +1,46 @@
+2005-11-05  Wakaba  <w@suika.fam.cx>
+
+	* Node.js (CSSNameSpaceRule): Renamed from |CSSNamespaceRule|
+	aligned with Gecko.
+	
+	* Property.js: Now requires |DOM.Node| module.  It adds two
+	internal methods to |Element| object.
+	(CSSPropertyValueComputer): Takes user agent and user style
+	sheet lists as constructor arguments.
+	(userAgentStyleSheetList, userStyleSheetList): New attributes.
+	(_UpdateComputedValueForMedia): Gets user agent and user
+	style sheets from new attributes.  Attach computed value set
+	object to all element nodes in given tree.  Set of supported
+	properties extended.
+	(_GetCascadedValueSet): Sorting function fixed.  Special
+	purpose property namespace
+	"http://suika.fam.cx/~wakaba/archive/2005/11/css.props." support added.
+	It is used to compute property value from more than one computed
+	values.
+	(_ComputeComputedValue): Special purpose property namespace
+	"http://suika.fam.cx/~wakaba/archive/2005/11/css.props." support added.
+	It is used to compute property value from more than one computed
+	values.  |CSS_INHERIT| support was missing.
+	(_PropImpl): |inherit|, and etc. are now added in initial set
+	of allowed values.  |allowedKeywords| is renamed to |allowedKeyword|.
+	|_PropImpl_Keywords| is renamed to |_PropImpl_Keyword|.  |_PropImpl_Length|
+	subclass added.  Few property definitions added.  |display|
+	is now a shorthand property as per CSS3.
+	
+	* Selectors.js (SSpecificity.toString): Stringify |a|, |b|, |c|,
+	and |d| values separeted by |-|.
+	
+	* SimpleParser.js (parseString): Loads |CSS.Property| module.
+	Property value parser is moved to |CSS.Property| module.  Typos fixed.
+	
+	* Value.js (CSSNumericValue): Now |%| is changed not to having 
+	any namespace URI, to distingulish |100%| (a |PERCENTAGE|)
+	and |100\%| (a |DIMENSION|).  Typo in constructor fixed.
+	(expandedURI): New attribute.  Note that expanded "URI" of 
+	percentage unit is defined to |%|.
+	(matchPrimitiveType): New method.  Several constant values for
+	value types added.
+
 2005-11-04  Wakaba  <w@suika.fam.cx>
 
 	* Property.js: New script.

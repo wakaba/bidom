@@ -321,7 +321,7 @@ function (pnode) {
         this._ParseError (token, {type: "tagc"});
       }
       this._LexMode = "CON";
-      isDoc = isDocOriginal;
+      if (current.length == 0) isDoc = isDocOriginal;
     } else if (token.type == "string") {
       if (isDoc) {
         if (token.value.match (/[^\x09\x0A\x0D\x20]/)) {
@@ -949,7 +949,7 @@ cx.fam.suika.y2005.LS.SimpleParser.prototype._PopToken = function () {
 };
 
 
-/* Revision: $Date: 2005/10/31 00:54:29 $ */
+/* Revision: $Date: 2005/11/05 12:04:34 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

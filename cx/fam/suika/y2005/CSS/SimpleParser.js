@@ -33,6 +33,7 @@ function (inputText) {
   this._IgnoreCharset = false;
   
   JSAN.require ("cx.fam.suika.y2005.CSS.Node");
+  JSAN.require ("cx.fam.suika.y2005.CSS.Property");
   var ss = this._Factory.createCSSStyleSheet ();
   this._NSContext = ss;
   
@@ -262,12 +263,13 @@ function (parentNode) {
       token = this._PopToken (false);
       if (token && token.type == "DELIM" && token.value == ":") {
         token = this._PopToken (false);
-        var pp = this._PropertyValueParser[prop.namespaceURI] != null
-                 ? this._PropertyValueParser[prop.namespaceURI][prop.localName]
+        var pp = cx.fam.suika.y2005.CSS.Property._Prop[prop.namespaceURI] != null
+                 ? cx.fam.suika.y2005.CSS.Property._Prop
+                     [prop.namespaceURI][prop.localName]
                  : null;
         if (pp != null) {
           this._TokenStack.push (token);
-          pp.apply (this, [block, prop]);
+          pp.parsePropertyValue.apply (this, [block, prop, pp]);
             /* |pp| should not add a (valid) node if
                the next token is different from |}|, |;|, or the end of the input */
           token = this._PopToken ();
@@ -303,26 +305,6 @@ function (parentNode) {
   } /* D */
   
   if (token != null) this._TokenStack.push (token);
-};
-
-/* A set of property value parsers */
-cx.fam.suika.y2005.CSS.SimpleParser.prototype._PropertyValueParser = {};
-cx.fam.suika.y2005.CSS.SimpleParser.prototype._PropertyValueParser
-["urn:x-suika-fam-cx:css:"] = {
-  display: function (block, prop) {
-    var val = this._GetNextValue ();
-    if (val && val.getCSSValueType () == val.CSS_PRIMITIVE_VALUE &&
-        val.getPrimitiveType () == val.CSS_IDENT) {
-      var im = this._GetPriority ();
-      if (im) {
-        var p = this._Factory.createCSSPropertyNS
-                  (prop.namespaceURI, prop.prefix, prop.localName, val);
-        p.setPriority (im);
-        block.appendPropertyNode (p);
-        return true;
-      }
-    }
-  }
 };
 
 /* A set of pseudo element parsers */
@@ -386,21 +368,22 @@ function (token) {
   if (token == null) {
     return null;
   } else if (token.type == "DIMENSION") { /* <length> */
-    var unit = this._ExpandNamespacedIdent (context, token.value2.toLowerCase ());
+    var unit = this._ExpandNamespacedIdent (token.value2.toLowerCase ());
     var val = this._Factory.createCSSNumericValueNS
                 (token.value, unit.namespaceURI, unit.prefix, unit.localName);
     return val;
   } else if (token.type == "PERCENTAGE") { /* <percentage> */
     return this._Factory.createCSSNumericValueNS (token.value, null, null, "%");
   } else if (token.type == "NUMBER") { /* <number> or zero <length> */
-    return this._Factory.createCSSNumericValue (token.value);
+    return this._Factory.createCSSNumericValueNS (token.value);
   } else if (token.type == "IDENT") {
     var v = this._ExpandNamespacedIdent (token.value.toLowerCase ());
     var val = this._Factory.createCSSKeywordValueNS
                 (v.namespaceURI, v.prefix, v.localName);
     return val;
   } else if (token.type == "URI") {
-    return this._Factory.createCSSURIValue (token.value, context.getBaseURI ());
+    return this._Factory.createCSSURIValue
+             (token.value, this._NSContext.getBaseURI ());
   } else if (token.type == "FUNCTION") {
     var fname = token.value.toLowerCase ();
     if (fname == "rgb") {
@@ -415,7 +398,7 @@ function (token) {
         this._TokenStack.push (token2);
       } else if (token2.type == "NUMBER") { /* <number> or zero <length> */
         if (token.value == "-") token2.value *= -1;
-        return this._Factory.createCSSNumericValue (token2.value);
+        return this._Factory.createCSSNumericValueNS (token2.value);
       } else {
         this._TokenStack.push (token2);
       }
@@ -1438,7 +1421,7 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._PopChar = function () {
   return ch;
 };
 
-/* Revision: $Date: 2005/11/04 10:38:29 $ */
+/* Revision: $Date: 2005/11/05 12:04:34 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

@@ -209,7 +209,7 @@ cx.fam.suika.y2005.DOM.Node.Document._AddFeature
     createVWindow: function () {
       var win = this.createElementNS
                   ("http://suika.fam.cx/www/cx/fam/suika/y2005/WebUA/VDocument#",
-                   "VWindow")._Node;
+                   "vwindow")._Node;
       win._GetDOMNode = cx.fam.suika.y2005.DOM.Node._GetDOMElement;
       return cx.fam.suika.y2005.DOM.Node._GetDOMElement (win);
     }
@@ -263,12 +263,15 @@ cx.fam.suika.y2005.WebUA.VDocument.VWindowElement.prototype.getChildNodes =
 function () {
   return new cx.fam.suika.y2005.DOM.Node.NodeListArray ();
 };
+
 /**
    Returns the |VDocument| displayed in the window, if any, or |null|.
 */
 cx.fam.suika.y2005.WebUA.VDocument.VWindowElement.prototype.getContentDocument =
 function () {
-  return this.getFirstChild ();
+  return typeof (this._Node._ContentDocument) != "undefined"
+           ? this._Node._ContentDocument
+           : this.getFirstChild ();
 };
 /**
    Displays the |VDocment| in the window.  If |null| is given, then
@@ -288,7 +291,7 @@ cx.fam.suika.y2005.WebUA.VDocument.VWindowElement.prototype.toString = function 
   return "[object VWindowElement]";
 };
 
-/* Revision: $Date: 2005/10/30 05:14:42 $ */
+/* Revision: $Date: 2005/11/05 12:04:34 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

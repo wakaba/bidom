@@ -36,7 +36,6 @@ cx.fam.suika.y2005.DOM.HTML._GetSHTMLNode = function (n) {
   }
 };
 
-
 /* HTMLDocument */
 
 cx.fam.suika.y2005.DOM.HTML.HTMLDocument = function (node) {
@@ -89,6 +88,7 @@ cx.fam.suika.y2005.DOM.HTML.SHTMLElement.inherits
   (cx.fam.suika.y2005.DOM.HTML.HTMLElement);
 
 cx.fam.suika.y2005.DOM.HTML.getSHTMLElement = function (d) {
+  /* For WinIE 6 */
   if (d.namespaceURI == null && d.localName == null &&
       (d._NamespaceURI == null || d._NamespaceURI == "http://www.w3.org/1999/xhtml")) {
     if (d.nodeName == "SCRIPT") {
@@ -99,8 +99,28 @@ cx.fam.suika.y2005.DOM.HTML.getSHTMLElement = function (d) {
       return new cx.fam.suika.y2005.DOM.HTML.SHTMLCommentElement (d);
     }
   }
-  return new cx.fam.suika.y2005.DOM.HTML.SHTMLElement (d);
+  var ns = typeof (d._NamespaceURI) == "undefined"
+             ? d.namespaceURI
+             : d._NamespaceURI;
+  var ln = typeof (d._LocalName) == "undefined"
+             ? d.localName
+             : d._LocalName;
+  if (cx.fam.suika.y2005.DOM.HTML.SHTMLElement._ElementTypeClass[ns] != null &&
+      cx.fam.suika.y2005.DOM.HTML.SHTMLElement._ElementTypeClass[ns][ln] != null) {
+    JSAN.require (cx.fam.suika.y2005.DOM.HTML.SHTMLElement._ElementTypeClass
+                  [ns][ln]["moduleName"]);
+    return eval ("new " + cx.fam.suika.y2005.DOM.HTML.SHTMLElement
+                 ._ElementTypeClass[ns][ln]["className"] + " (d)");
+  } else {
+    return new cx.fam.suika.y2005.DOM.HTML.SHTMLElement (d);
+  }
 };
+
+cx.fam.suika.y2005.DOM.HTML.SHTMLElement._ElementTypeClass = {};
+cx.fam.suika.y2005.DOM.HTML.SHTMLElement._ElementTypeClass
+["http://suika.fam.cx/www/cx/fam/suika/y2005/WebUA/VDocumentCSS."]
+  = cx.fam.suika.y2005.DOM.Node.Element._ElementTypeClass
+    ["http://suika.fam.cx/www/cx/fam/suika/y2005/WebUA/VDocumentCSS."];
 
 cx.fam.suika.y2005.DOM.HTML.SHTMLElement.prototype.getLocalName = function () {
   var ln = cx.fam.suika.y2005.DOM.HTML.SHTMLElement._super.getLocalName.apply

@@ -1,3 +1,9 @@
+2005-11-05  Wakaba  <w@suika.fam.cx>
+
+	* SimpleParser.js (parseStringWithContext): Don't turns |isDoc|
+	flag on unless the document element has been closed (enbuged
+	in 2005-10-30 change).
+
 2005-10-30  Wakaba  <w@suika.fam.cx>
 
 	* Generic.js (_Parser): Information on |CSS/SimpleParser| module added.

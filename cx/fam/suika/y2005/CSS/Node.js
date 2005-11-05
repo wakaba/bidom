@@ -816,7 +816,7 @@ cx.fam.suika.y2005.CSS.Node.CharsetRule.prototype.toString = function () {
 
 
 /**
-   Interface |CSSNamespaceRule|
+   Interface |CSSNameSpaceRule|
 */
 cx.fam.suika.y2005.CSS.Node.NamespaceRule = function (prefixArg, namespaceURIArg) {
   cx.fam.suika.y2005.CSS.Node.NamespaceRule._superclass.apply
@@ -868,7 +868,7 @@ cx.fam.suika.y2005.CSS.Node.NamespaceRule.prototype.getPrefix = function () {
 /* Is setter necessary? */
 
 cx.fam.suika.y2005.CSS.Node.NamespaceRule.prototype.toString = function () {
-  return "[object CSSNamespaceRule]";
+  return "[object CSSNameSpaceRule]";
 };
 
 
@@ -1258,7 +1258,7 @@ cx.fam.suika.y2005.CSS.RuleList.prototype.toString = function () {
   return "[object CSSRuleList]";
 };
 
-/* Revision: $Date: 2005/11/04 10:38:29 $ */
+/* Revision: $Date: 2005/11/05 12:04:34 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

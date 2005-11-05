@@ -56,7 +56,8 @@ cx.fam.suika.y2005.DOM.Implementation.DOMImplementation._AddFeature
        Creates a CSS numeral value.
        
        @param value        The floating number value.
-       @param namespaceURI The namespace URI of the unit, or |null| for no unit.
+       @param namespaceURI The namespace URI of the unit, or |null| for no unit
+                           or percentage.
        @param prefix       The namespace prefix of the unit, if any, or |null|.
        @param localName    The local name of the unit, |%| for percentage,
                            or |null| for no unit.  Note that |namespaceURI|
@@ -68,9 +69,9 @@ cx.fam.suika.y2005.DOM.Implementation.DOMImplementation._AddFeature
       if (prefix != null) prefix = prefix.toLowerCase ();
       if (namespaceURI == null && localName == null) {
         return new cx.fam.suika.y2005.CSS.Value.NumericValue (value, null, null, null);
-      } else if (localName == "%") {
+      } else if (namespaceURI == null && localName == "%") {
         return new cx.fam.suika.y2005.CSS.Value.NumericValue
-                 (value, "urn:x-suika-fam-cx:css:", null, localName);
+                 (value, null, null, localName);
       } else {
         return new cx.fam.suika.y2005.CSS.Value.NumericValue
                  (value, namespaceURI, prefix, localName);
@@ -214,6 +215,13 @@ cx.fam.suika.y2005.CSS.Value.Value.prototype.getCSSValueType = function () {
 };
 
 /**
+   The expanded URI of the identifier.
+*/
+cx.fam.suika.y2005.CSS.Value.CascadeValue.prototype.getExpandedURI = function () {
+  return this.namespaceURI + this.localName;
+};
+
+/**
    The local name of the identifier.
 */
 cx.fam.suika.y2005.CSS.Value.CascadeValue.prototype.getLocalName = function () {
@@ -267,6 +275,21 @@ cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.getCSSValueType = function
   return this.CSS_PRIMITIVE_VALUE;
 };
 
+/**
+   Returns whether the value is of type or not.
+   
+   @param valueType  The type of the value.
+   @return |true| if match or |false| otherwise.
+*/
+cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.matchPrimitiveType =
+function (valueType) {
+  return (valueType == this.getPrimitiveType ());
+};
+
+/**
+   The type of primitive value.
+   [DOM Level 2 CSS]
+*/
 cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.getPrimitiveType = function () {
   return this.CSS_UNKNOWN;
 };
@@ -297,6 +320,16 @@ cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_COUNTER    = 23;
 cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_RECT       = 24;
 cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_RGBCOLOR   = 25;
 
+cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_INTEGER    = 10001;
+cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_NON_NEGATIVE_INTEGER = 10002;
+cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_NON_NEGATIVE_NUMBER = 10003;
+cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_LENGTH     = 10004;
+cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_RELATIVE_LENGTH = 10005;
+cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_ABSOLUTE_LENGTH = 10006;
+cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_ANGLE      = 10007;
+cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_TIME       = 10008;
+cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_FREQUENCY  = 10009;
+
 /* Not implemented: |getCounterValue|, |getFloatValue|, |getRGBColorValue|,
                     |getRectValue|, |getStringValue|, |setFloatValue|,
                     |setStringValue|,  */
@@ -312,7 +345,7 @@ cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.toString = function () {
 cx.fam.suika.y2005.CSS.Value.NumericValue = function (f, nsuri, pfx, lname) {
   cx.fam.suika.y2005.CSS.Value.NumericValue._superclass.apply (this, []);
   this.value = f;
-  this.namespaceURI = f;
+  this.namespaceURI = nsuri;
   this.prefix = pfx;
   this.localName = lname;
 };
@@ -321,7 +354,6 @@ cx.fam.suika.y2005.CSS.Value.NumericValue.inherits
 cx.fam.suika.y2005.CSS.Value.NumericValue.prototype.getPrimitiveType = function () {
   if (this.namespaceURI == "urn:x-suika-fam-cx:css:") {
     switch (this.localName) {
-    case "%":    return this.CSS_PERCENTAGE;
     case "em":   return this.CSS_EMS;
     case "ex":   return this.CSS_EXS;
     case "px":   return this.CSS_PX;
@@ -341,8 +373,23 @@ cx.fam.suika.y2005.CSS.Value.NumericValue.prototype.getPrimitiveType = function 
     }
   } else if (this.namespaceURI == null && this.localName == null) {
     return this.CSS_NUMBER;
+  } else if (this.namespaceURI == null && this.localName == "%") {
+    return this.CSS_PERCENTAGE;
   } else {
     return this.CSS_DIMENSION;
+  }
+};
+
+/**
+   The unit expanded URI, |%|, or |null| if no unit.
+*/
+cx.fam.suika.y2005.CSS.Value.NumericValue.prototype.getUnitExpandedURI = function () {
+  if (this.localName != null) {
+    return this.namespaceURI + this.localName;
+  } else if (this.namespaceURI == null) {
+    return this.localName;
+  } else {
+    return null;
   }
 };
 
@@ -389,16 +436,96 @@ cx.fam.suika.y2005.CSS.Value.NumericValue.prototype.getValue = function () {
 
 cx.fam.suika.y2005.CSS.Value.NumericValue.prototype.getCSSText = function () {
   var r = this.value.toString (10);
-  if (this.namespaceURI != null && this.localName != null) {
-    if (this.namespaceURI == "urn:x-suika-fam-cx:cx:" && this.localName == "%") {
-      r += "%";
-    } else {
-      r += cx.fam.suika.y2005.CSS.Value._EscapeIdent (this.getUnitName ());
-    }
+  if (this.namespaceURI != null) {
+    r += cx.fam.suika.y2005.CSS.Value._EscapeIdent (this.getUnitName ());
+  } else if (this.localName == "%") {
+    r += "%";
   }
   return r;
 };
 /* Not implemented: |setCSSText| */
+
+cx.fam.suika.y2005.CSS.Value.NumericValue.prototype.matchPrimitiveType =
+function (valueType) {
+  var thisType = this.getPrimitiveType ();
+  if (valueType == thisType) return true;
+  switch (valueType) {
+  case this.CSS_LENGTH:
+    switch (this.namespaceURI + this.localName) {
+    case "urn:x-suika-fam-cx:css:em":
+    case "urn:x-suika-fam-cx:css:ex":
+    case "urn:x-suika-fam-cx:css:px":
+    case "urn:x-suika-fam-cx:css:gd":
+    case "urn:x-suika-fam-cx:css:rem":
+    case "urn:x-suika-fam-cx:css:vw":
+    case "urn:x-suika-fam-cx:css:vh":
+    case "urn:x-suika-fam-cx:css:vm":
+    case "urn:x-suika-fam-cx:css:in":
+    case "urn:x-suika-fam-cx:css:cm":
+    case "urn:x-suika-fam-cx:css:mm":
+    case "urn:x-suika-fam-cx:css:pt":
+    case "urn:x-suika-fam-cx:css:pc":
+      return true;
+    }
+    return false;
+  case this.CSS_RELATIVE_LENGTH:
+    switch (this.namespaceURI + this.localName) {
+    case "urn:x-suika-fam-cx:css:em":
+    case "urn:x-suika-fam-cx:css:ex":
+    case "urn:x-suika-fam-cx:css:px":
+    case "urn:x-suika-fam-cx:css:gd":
+    case "urn:x-suika-fam-cx:css:rem":
+    case "urn:x-suika-fam-cx:css:vw":
+    case "urn:x-suika-fam-cx:css:vh":
+    case "urn:x-suika-fam-cx:css:vm":
+      return true;
+    }
+    return false;
+  case this.CSS_ABSOLUTE_LENGTH:
+    switch (this.namespaceURI + this.localName) {
+    case "urn:x-suika-fam-cx:css:in":
+    case "urn:x-suika-fam-cx:css:cm":
+    case "urn:x-suika-fam-cx:css:mm":
+    case "urn:x-suika-fam-cx:css:pt":
+    case "urn:x-suika-fam-cx:css:pc":
+      return true;
+    }
+    return false;
+  case this.CSS_INTEGER:
+    return (valueType == this.CSS_NUMBER && (this.value % 1 == 0));
+  case this.CSS_NON_NEGATIVE_INTEGER:
+    return (valueType == this.CSS_NUMBER && this.value > 0 && (this.value % 1 == 0));
+  case this.CSS_NON_NEGATIVE_NUMBER:
+    return (valueType == this.CSS_NUMBER && this.value > 0);
+  /*
+    Note.  These three types cannot be checked whether it is really
+           of those type literally, since tokenizer discards such information.
+  */
+  case this.CSS_ANGLE:
+    switch (this.namespaceURI + this.localName) {
+    case "urn:x-suika-fam-cx:css:deg":
+    case "urn:x-suika-fam-cx:css:grad":
+    case "urn:x-suika-fam-cx:css:rad":
+    case "urn:x-suika-fam-cx:css:turn":
+      return true;
+    }
+    return false;
+  case this.CSS_TIME:
+    switch (this.namespaceURI + this.localName) {
+    case "urn:x-suika-fam-cx:css:ms":
+    case "urn:x-suika-fam-cx:css:s":
+      return true;
+    }
+    return false;
+  case this.CSS_FREQUENCY:
+    switch (this.namespaceURI + this.localName) {
+    case "urn:x-suika-fam-cx:css:hz":
+    case "urn:x-suika-fam-cx:css:khz":
+      return true;
+    }
+    return false;
+  }
+};
 
 cx.fam.suika.y2005.CSS.Value.NumericValue.prototype.toString = function () {
   return "[object CSSNumericValue]";
@@ -454,6 +581,12 @@ cx.fam.suika.y2005.CSS.Value.IdentValue.inherits
 cx.fam.suika.y2005.CSS.Value.IdentValue.prototype.getPrimitiveType = function () {
   return this.CSS_IDENT;
 };
+
+/**
+   The expanded URI of the identifier.
+*/
+cx.fam.suika.y2005.CSS.Value.IdentValue.prototype.getExpandedURI =
+  cx.fam.suika.y2005.CSS.Value.CascadeValue.prototype.getExpandedURI;
 
 /**
    The local name of the identifier.
@@ -688,7 +821,7 @@ cx.fam.suika.y2005.CSS.Value.ValueList.prototype.toString = function () {
   return "[object CSSValueList]";
 };
 
-/* Revision: $Date: 2005/11/04 10:38:29 $ */
+/* Revision: $Date: 2005/11/05 12:04:34 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

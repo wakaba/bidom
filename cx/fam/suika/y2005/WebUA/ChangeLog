@@ -1,3 +1,15 @@
+2005-11-05  Wakaba  <w@suika.fam.cx>
+
+	* VDocumentCSS.js: New module.
+	
+	* VDocument.js: Element type name |VWindow| has been
+	changed to |vwindow| for compatibility with Gecko HTML mode (in
+	which element type selectors in CSS style sheets in HTML
+	|style| elements are normalized to lowercase so that author
+	cannot specify style rule for the window).
+	(contentDocument): Returns |this._Node._ContentDocument|, if
+	available, it is set in |VDocumentCSS| module.
+
 2005-10-30  Wakaba  <w@suika.fam.cx>
 
 	* VDocument.js: New script.

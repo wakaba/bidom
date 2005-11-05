@@ -1557,10 +1557,10 @@ cx.fam.suika.y2005.CSS.Selectors.Specificity.prototype.getD = function () {
 };
 
 cx.fam.suika.y2005.CSS.Selectors.Specificity.prototype.toString = function () {
-  return "[object SSpecificity]";
+  return this.a + "-" + this.b + "-" + this.c + "-" + this.d;
 };
 
-/* Revision: $Date: 2005/11/04 10:38:29 $ */
+/* Revision: $Date: 2005/11/05 12:04:34 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

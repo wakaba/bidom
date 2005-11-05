@@ -99,6 +99,11 @@ cx.fam.suika.y2005.DOM.Node._FeatureModule
 cx.fam.suika.y2005.DOM.Node._FeatureModule
 ["http://suika.fam.cx/www/cx/fam/suika/y2005/webua/vdocument#"]["1.0"]
   = /* ??JSANModule?? */ "cx.fam.suika.y2005.WebUA.VDocument";
+cx.fam.suika.y2005.DOM.Node._FeatureModule
+["http://suika.fam.cx/www/cx/fam/suika/y2005/webua/vdocumentcss."] = {};
+cx.fam.suika.y2005.DOM.Node._FeatureModule
+["http://suika.fam.cx/www/cx/fam/suika/y2005/webua/vdocumentcss."]["1.0"]
+  = /* ??JSANModule?? */ "cx.fam.suika.y2005.WebUA.VDocumentCSS";
 
 JSAN.require ("cx.fam.suika.y2005.Class.Inherit");
 
@@ -805,9 +810,21 @@ cx.fam.suika.y2005.DOM.Node.Element._ElementTypeClass = {};
 cx.fam.suika.y2005.DOM.Node.Element._ElementTypeClass[
   "http://suika.fam.cx/www/cx/fam/suika/y2005/WebUA/VDocument#"
 ] = {
-  VWindow: {
+  vwindow: {
     moduleName: /* ??JSANModule?? */ "cx.fam.suika.y2005.WebUA.VDocument",
     className: "cx.fam.suika.y2005.WebUA.VDocument.VWindowElement"
+  }
+};
+cx.fam.suika.y2005.DOM.Node.Element._ElementTypeClass[
+  "http://suika.fam.cx/www/cx/fam/suika/y2005/WebUA/VDocumentCSS."
+] = {
+  block: {
+    moduleName: /* ??JSANModule?? */ "cx.fam.suika.y2005.WebUA.VDocumentCSS",
+    className: "cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBlockElement"
+  },
+  inline: {
+    moduleName: /* ??JSANModule?? */ "cx.fam.suika.y2005.WebUA.VDocumentCSS",
+    className: "cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSInlineElement"
   }
 };
 
