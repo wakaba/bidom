@@ -1,3 +1,8 @@
+2005-11-06  Wakaba  <w@suika.fam.cx>
+
+	* VDocumentCSS.js (_SetComputedStyle): Split function by rendering
+	engines.  Support for |color| and |opacity| properties added.
+
 2005-11-05  Wakaba  <w@suika.fam.cx>
 
 	* VDocumentCSS.js: New module.

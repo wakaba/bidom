@@ -40,13 +40,16 @@ function (inputText, contextArg) {
       this._ParseError (token, {type: "string", value: "xml"});
     }
     
-    if (token.value.match (/^xml[\x09\x0A\x0D\x20]/)) {
-      token.value = RegExp.rightContext;
-      if (token.value.match
-            (/^version[\x09\x0A\x0D\x20]*=[\x09\x0A\x0D\x20]*("[^"]*"|'[^']*')/)) {
-        var ver = RegExp.$1.slice (1);
+    var pattern = /^xml[\x09\x0A\x0D\x20]/;
+    var rexec;
+    if ((rexec = pattern.exec (token.value)) != null) {
+      token.value = token.value.substring (rexec[0].length);
+      pattern = /^version[\x09\x0A\x0D\x20]*=[\x09\x0A\x0D\x20]*("[^"]*"|'[^']*')/;
+      if ((rexec = pattern.exec (token.value)) != null) {
+        var ver = rexec[1].slice (1);
         ver = ver.substring (0, ver.length - 1);
-        token.value = RegExp.rightContext.replace (/[\x09\x0A\x0D\x20]+/, '');
+        token.value = token.value.substring (rexec[0].length)
+                    .replace (/[\x09\x0A\x0D\x20]+/, '');
         if (ver != "1.0" && ver != "1.1") {
           this._ParseError ({type: "VersionNum", value: ver},
                             {type: "VersionNum", value: "1.0"});
@@ -56,18 +59,20 @@ function (inputText, contextArg) {
         this._ParseError (token, {type: "VersionInfo"});
       }
       
-      if (token.value.match
-            (/^encoding[\x09\x0A\x0D\x20]*=[\x09\x0A\x0D\x20]*("[^"]*"|'[^']*')/)) {
-        xmlEncoding = RegExp.$1.slice (1);
-        xmlEncoding = xmlEncoding.substring (0, enc.length - 1);
-        token.value = RegExp.rightContext.replace (/[\x09\x0A\x0D\x20]+/, '');
+      pattern = /^encoding[\x09\x0A\x0D\x20]*=[\x09\x0A\x0D\x20]*("[^"]*"|'[^']*')/;
+      if ((rexec = pattern.exec (token.value)) != null) {
+        xmlEncoding = rexec[1].slice (1);
+        xmlEncoding = xmlEncoding.substring (0, xmlEncoding.length - 1);
+        token.value = token.value.substring (rexec[0].length)
+                    .replace (/[\x09\x0A\x0D\x20]+/, '');
       }
       
-      if (token.value.match
-            (/^standalone[\x09\x0A\x0D\x20]*=[\x09\x0A\x0D\x20]*("[^"]*"|'[^']*')/)) {
-        var st = RegExp.$1.slice (1);
-        st = st.substring (0, enc.length - 1);
-        token.value = RegExp.rightContext.replace (/[\x09\x0A\x0D\x20]+/, '');
+      pattern = /^standalone[\x09\x0A\x0D\x20]*=[\x09\x0A\x0D\x20]*("[^"]*"|'[^']*')/;
+      if ((rexec = pattern.exec (token.value)) != null) {
+        var st = rexec[1].slice (1);
+        st = st.substring (0, st.length - 1);
+        token.value = token.value.substring (rexec[0].length)
+                    .replace (/[\x09\x0A\x0D\x20]+/, '');
         if (st == "yes") {
           xmlStandalone = true;
         } else if (st == "no") {
@@ -336,10 +341,12 @@ function (pnode) {
       
       /* target */
       var target;
+      var pattern = /^([^\x09\x0A\x0D\x20]+)[\x09\x0A\x0D\x20]*/;
+      var rexec;
       if (token && token.type == "string" &&
-          token.value.match (/^([^\x09\x0A\x0D\x20]+)[\x09\x0A\x0D\x20]*/)) {
-        target = RegExp.$1;
-        token.value = RegExp.rightContent;
+          (rexec = pattern.exec (token.value)) != null) {
+        target = rexec[1];
+        token.value = token.value.substring (rexec[0].length);
         if (target.toLowerCase () == "xml") {
           this._ParseError ({type: "Name", value: target}, {type: "PITarget"});
         }
@@ -358,6 +365,7 @@ function (pnode) {
       
       var pi = doc.createProcessingInstruction (target, data);
       current.appendChild (pi);
+      this._LexMode = "CON";
     } else if (token.type == "mdo-com") {
       this._LexMode = "COM";
       var com
@@ -434,6 +442,10 @@ function (pnode) {
       this._TokenStack.push (token);
       break;
     }
+  }
+  
+  if (el.length != 0) {
+    this._ParseError (token, {type: "EndTag", value: "**missing end tag**"});
   }
 };
 
@@ -949,7 +961,7 @@ cx.fam.suika.y2005.LS.SimpleParser.prototype._PopToken = function () {
 };
 
 
-/* Revision: $Date: 2005/11/05 12:04:34 $ */
+/* Revision: $Date: 2005/11/06 14:24:23 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

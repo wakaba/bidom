@@ -377,19 +377,19 @@ function (elementNode, pseudoElements) {
       }
       return false;
     case this.SELECTORS_COMBINATOR_DIRECT_ADJACENT_SIBLING:
-      elementNode = elementNode.getPreviousElement ();
+      elementNode = elementNode.getPreviousSiblingElement ();
       if (elementNode == null) return false;
       if (!this.v[i].matchElement (elementNode, epe)) {
         return false;
       }
       continue SSS;
     case this.SELECTORS_COMBINATOR_INDIRECT_ADJACENT_SIBLING:
-      elementNode = elementNode.getPreviousElement ();
+      elementNode = elementNode.getPreviousSiblingElement ();
       while (elementNode != null) {
         if (this.v[i].matchElement (elementNode, epe)) {
           continue SSS;
         }
-        elementNode = elementNode.getPreviousElement ();
+        elementNode = elementNode.getPreviousSiblingElement ();
       }
       return false;
     default:
@@ -1388,7 +1388,7 @@ cx.fam.suika.y2005.CSS.Selectors.PseudoClass._Impl
 cx.fam.suika.y2005.CSS.Selectors.PseudoClass._Impl
 ["urn:x-suika-fam-cx:selectors:"]["first-child"] = {
   matchElement: function (el) {
-    if (el.getPreviousElement () == null) {
+    if (el.getPreviousSiblingElement () == null) {
       return true;
     }
     return false;
@@ -1560,7 +1560,7 @@ cx.fam.suika.y2005.CSS.Selectors.Specificity.prototype.toString = function () {
   return this.a + "-" + this.b + "-" + this.c + "-" + this.d;
 };
 
-/* Revision: $Date: 2005/11/05 12:04:34 $ */
+/* Revision: $Date: 2005/11/06 14:24:23 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

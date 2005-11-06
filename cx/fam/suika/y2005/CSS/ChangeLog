@@ -1,3 +1,25 @@
+2005-11-06  Wakaba  <w@suika.fam.cx>
+
+	* Property.js: Support for |color| and |opacity| properties added.
+	(_PropImpl): Support for |allowedFunction| parameter added.
+	
+	* Selectors.js (matchElement): Use |previousSiblingElement| attribute
+	instead of |previousElement|.
+	
+	* SimpleParser.js (_GetNextValue): Functions |rgb|, |rgba|,
+	|hsl|, and |hsla| supported.
+	
+	* Value.js: Non-CSS2 constants are removed.  Now |cssValueType|
+	and |primitiveType| attributes always takes CSS2 value.
+	(CSSCascadingValue): Removed.  Now |inherit| and other values
+	are represented by |CSSIdentValue| class.
+	(createCSSKeywordValueNS): Always creates a |CSSIdentValue| object.
+	(createCSSRGBAValue, createCSSHSLValue, createCSSHSLAValue): New methods.
+	(CSSValue.typeURI): New attribute.
+	(CSSValue.matchTypeURI): New method.
+	(RGBValue.getCSSText): Typo fixed.  Inserts |SPACE| characters after |COMMA|s.
+	(CSSRGBAValue, CSSHSLValue, CSSHSLAValue): New classes.
+
 2005-11-05  Wakaba  <w@suika.fam.cx>
 
 	* Node.js (CSSNameSpaceRule): Renamed from |CSSNamespaceRule|

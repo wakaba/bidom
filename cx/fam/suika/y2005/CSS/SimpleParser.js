@@ -387,8 +387,176 @@ function (token) {
   } else if (token.type == "FUNCTION") {
     var fname = token.value.toLowerCase ();
     if (fname == "rgb") {
-      
+      token = this._PopToken (false);
+      if (token && token.type == "NUMBER") {
+        var r = token.value;
+        token = this._PopToken ();
+        if (token && token.type == "DELIM" && token.value == ",") {
+          token = this._PopToken ();
+          if (token && token.type == "NUMBER") {
+            var g = token.value;
+            token = this._PopToken ();
+            if (token && token.type == "DELIM" && token.value == ",") {
+              token = this._PopToken ();
+              if (token && token.type == "NUMBER") {
+                var b = token.value;
+                token = this._PopToken ();
+                if (!token || token.type == ")") {
+                  /* null token is allowed because of CSS error recovering rule */
+                  return this._Factory.createCSSRGBValue (r, g, b);
+                }
+              }
+            }
+          }
+        }
+      } else if (token && token.type == "PERCENTAGE") {
+        var r = token.value;
+        token = this._PopToken ();
+        if (token && token.type == "DELIM" && token.value == ",") {
+          token = this._PopToken ();
+          if (token && token.type == "PERCENTAGE") {
+            var g = token.value;
+            token = this._PopToken ();
+            if (token && token.type == "DELIM" && token.value == ",") {
+              token = this._PopToken ();
+              if (token && token.type == "PERCENTAGE") {
+                var b = token.value;
+                token = this._PopToken ();
+                if (!token || token.type == ")") {
+                  /* null token is allowed because of CSS error recovering rule */
+                  return this._Factory.createCSSRGBValue
+                         (this._Factory.createCSSNumericValueNS (r, null, null, "%"),
+                          this._Factory.createCSSNumericValueNS (g, null, null, "%"),
+                          this._Factory.createCSSNumericValueNS (b, null, null, "%"));
+                }
+              }
+            }
+          }
+        }
+      }
+    } else if (fname == "rgba") {
+      token = this._PopToken (false);
+      if (token && token.type == "NUMBER") {
+        var r = token.value;
+        token = this._PopToken ();
+        if (token && token.type == "DELIM" && token.value == ",") {
+          token = this._PopToken ();
+          if (token && token.type == "NUMBER") {
+            var g = token.value;
+            token = this._PopToken ();
+            if (token && token.type == "DELIM" && token.value == ",") {
+              token = this._PopToken ();
+              if (token && token.type == "NUMBER") {
+                var b = token.value;
+                token = this._PopToken ();
+                if (token && token.type == "DELIM" && token.value == ",") {
+                  token = this._PopToken ();
+                  if (token && token.type == "NUMBER") {
+                    var a = token.value;
+                    token = this._PopToken ();
+                    if (!token || token.type == ")") {
+                      /* null token is allowed because of CSS error recovering rule */
+                      return this._Factory.createCSSRGBAValue (r, g, b, a);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      } else if (token && token.type == "PERCENTAGE") {
+        var r = token.value;
+        token = this._PopToken ();
+        if (token && token.type == "DELIM" && token.value == ",") {
+          token = this._PopToken ();
+          if (token && token.type == "PERCENTAGE") {
+            var g = token.value;
+            token = this._PopToken ();
+            if (token && token.type == "DELIM" && token.value == ",") {
+              token = this._PopToken ();
+              if (token && token.type == "PERCENTAGE") {
+                var b = token.value;
+                token = this._PopToken ();
+                if (token && token.type == "DELIM" && token.value == ",") {
+                  token = this._PopToken ();
+                  if (token && token.type == "NUMBER") {
+                    var a = token.value;
+                    token = this._PopToken ();
+                    if (!token || token.type == ")") {
+                      /* null token is allowed because of CSS error recovering rule */
+                      return this._Factory.createCSSRGBAValue
+                         (this._Factory.createCSSNumericValueNS (r, null, null, "%"),
+                          this._Factory.createCSSNumericValueNS (g, null, null, "%"),
+                          this._Factory.createCSSNumericValueNS (b, null, null, "%"),
+                          a);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } else if (fname == "hsl") {
+      token = this._PopToken (false);
+      if (token && token.type == "NUMBER") {
+        var h = token.value;
+        token = this._PopToken ();
+        if (token && token.type == "DELIM" && token.value == ",") {
+          token = this._PopToken ();
+          if (token && token.type == "PERCENTAGE") {
+            var s = token.value;
+            token = this._PopToken ();
+            if (token && token.type == "DELIM" && token.value == ",") {
+              token = this._PopToken ();
+              if (token && token.type == "PERCENTAGE") {
+                var l = token.value;
+                token = this._PopToken ();
+                if (!token || token.type == ")") {
+                  /* null token is allowed because of CSS error recovering rule */
+                  return this._Factory.createCSSHSLValue (h, s, l);
+                }
+              }
+            }
+          }
+        }
+      }
+    } else if (fname == "hsla") {
+      token = this._PopToken (false);
+      if (token && token.type == "NUMBER") {
+        var h = token.value;
+        token = this._PopToken ();
+        if (token && token.type == "DELIM" && token.value == ",") {
+          token = this._PopToken ();
+          if (token && token.type == "PERCENTAGE") {
+            var s = token.value;
+            token = this._PopToken ();
+            if (token && token.type == "DELIM" && token.value == ",") {
+              token = this._PopToken ();
+              if (token && token.type == "PERCENTAGE") {
+                var l = token.value;
+                token = this._PopToken ();
+                if (token && token.type == "DELIM" && token.value == ",") {
+                  token = this._PopToken ();
+                  if (token && token.type == "NUMBER") {
+                    var a = token.value;
+                    token = this._PopToken ();
+                    if (!token || token.type == ")") {
+                      /* null token is allowed because of CSS error recovering rule */
+                      return this._Factory.createCSSHSLAValue (h, s, l, a);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
+    /* error - push a dummy token for later process to ignore
+               tokens that takes matching of "(" & ")" into account  */
+    this._TokenStack.push ({type: "FUNCTION", value: "**dummy**"});
+    return null;
   } else if (token.type == "STRING") {
     return this._Factory.createCSSStringValue (token.value);
   } else if (token.type == "DELIM") {
@@ -1421,7 +1589,7 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._PopChar = function () {
   return ch;
 };
 
-/* Revision: $Date: 2005/11/05 12:04:34 $ */
+/* Revision: $Date: 2005/11/06 14:24:23 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

@@ -35,19 +35,6 @@ cx.fam.suika.y2005.DOM.Implementation.DOMImplementation._AddFeature
     createCSSKeywordValueNS: function (namespaceURI, prefix, localName) {
       localName = localName.toLowerCase ();
       if (prefix != null) prefix = prefix.toLowerCase ();
-      if (namespaceURI == "urn:x-suika-fam-cx:css:") {
-        switch (localName) {
-        case "inherit":
-        case "important":
-        case "initial":
-        case "-moz-initial":
-          return new cx.fam.suika.y2005.CSS.Value.CascadeValue
-                       (namespaceURI, prefix, localName);
-        }
-      } else if (namespaceURI == "http://suika.fam.cx/~wakaba/archive/2005/cssc.") {
-        return new cx.fam.suika.y2005.CSS.Value.CascadeValue
-                     (namespaceURI, prefix, localName);
-      }
       return new cx.fam.suika.y2005.CSS.Value.IdentValue
                (namespaceURI, prefix, localName);
     },
@@ -124,13 +111,100 @@ cx.fam.suika.y2005.DOM.Implementation.DOMImplementation._AddFeature
     },
     
     /**
+       Creates a CSS RGBA color value.
+       
+       @param red   The red color value.
+       @param green The green color value.
+       @param blue  The blue color value.
+       @param alpha The alpha value.
+       
+       For ECMAScript binding, |Number| type values can be used
+       as parameters as well as |CSSNumericValue| objects.  They
+       are converted into |CSSNumericValue|s with no unit.
+    */
+    createCSSRGBAValue: function (red, green, blue, alpha) {
+      if (typeof (red) == "number") {
+        red = new cx.fam.suika.y2005.CSS.Value.NumericValue (red, null, null, null);
+      }
+      if (typeof (green) == "number") {
+        green = new cx.fam.suika.y2005.CSS.Value.NumericValue
+                  (green, null, null, null);
+      }
+      if (typeof (blue) == "number") {
+        blue = new cx.fam.suika.y2005.CSS.Value.NumericValue (blue, null, null, null);
+      }
+      if (typeof (alpha) == "number") {
+        alpha = new cx.fam.suika.y2005.CSS.Value.NumericValue
+                  (alpha, null, null, null);
+      }
+      return new cx.fam.suika.y2005.CSS.Value.RGBAValue (red, green, blue, alpha);
+    },
+    
+    /**
+       Creates a CSS HSL color value.
+       
+       @param hue        The hue value.
+       @param saturation The saturation value.
+       @param lightness  The lightness value.
+       
+       For ECMAScript binding, |Number| type values can be used
+       as parameters as well as |CSSNumericValue| objects.  They
+       are converted into |CSSNumericValue|s with no unit or of percentage.
+    */
+    createCSSHSLValue: function (hue, saturation, lightness) {
+      if (typeof (hue) == "number") {
+        hue = new cx.fam.suika.y2005.CSS.Value.NumericValue (hue, null, null, null);
+      }
+      if (typeof (saturation) == "number") {
+        saturation = new cx.fam.suika.y2005.CSS.Value.NumericValue
+                  (saturation, null, null, "%");
+      }
+      if (typeof (lightness) == "number") {
+        lightness = new cx.fam.suika.y2005.CSS.Value.NumericValue
+                  (lightness, null, null, "%");
+      }
+      return new cx.fam.suika.y2005.CSS.Value.HSLValue (hue, saturation, lightness);
+    },
+    
+    /**
+       Creates a CSS HSLA color value.
+       
+       @param hue        The hue value.
+       @param saturation The saturation value.
+       @param lightness  The lightness value.
+       @param alpha      The alpha value.
+       
+       For ECMAScript binding, |Number| type values can be used
+       as parameters as well as |CSSNumericValue| objects.  They
+       are converted into |CSSNumericValue|s with no unit or of percentage.
+    */
+    createCSSHSLAValue: function (hue, saturation, lightness, alpha) {
+      if (typeof (hue) == "number") {
+        hue = new cx.fam.suika.y2005.CSS.Value.NumericValue (hue, null, null, null);
+      }
+      if (typeof (saturation) == "number") {
+        saturation = new cx.fam.suika.y2005.CSS.Value.NumericValue
+                  (saturation, null, null, "%");
+      }
+      if (typeof (lightness) == "number") {
+        lightness = new cx.fam.suika.y2005.CSS.Value.NumericValue
+                  (lightness, null, null, "%");
+      }
+      if (typeof (alpha) == "number") {
+        alpha = new cx.fam.suika.y2005.CSS.Value.NumericValue
+                  (alpha, null, null, null);
+      }
+      return new cx.fam.suika.y2005.CSS.Value.HSLAValue
+               (hue, saturation, lightness, alpha);
+    },
+    
+    /**
        Creates an empty |CSSValueList|.
     */
     createCSSValueList: function () {
       return new cx.fam.suika.y2005.CSS.Value.ValueList ();
     }
   });
-
 
 /**
    Escapes a string as an |IDENT|.
@@ -180,86 +254,60 @@ cx.fam.suika.y2005.CSS.Value.Value.prototype.CSS_INHERIT         = 0;
 cx.fam.suika.y2005.CSS.Value.Value.prototype.CSS_PRIMITIVE_VALUE = 1;
 cx.fam.suika.y2005.CSS.Value.Value.prototype.CSS_VALUE_LIST      = 2;
 cx.fam.suika.y2005.CSS.Value.Value.prototype.CSS_CUSTOM          = 3;
+
+
 /**
-   A keyword value to control cascading and inheriting other than |inherit|.
-   [non-standard]
+   Returns whether the type of the value matches to a type or not.
+   
+   A type URI matches to the type of the value if:
+     - it is literally equal to the type URI of the value, or
+     - it is a superset of the type of the value, e.g.
+       the given type URI identifies <length> type and
+       the value is an |em|-united one.
+
+  The set of supported type URIs includes...
+    - <tag:manakai@suika.fam.cx,2005-11:integer>
+    - <tag:manakai@suika.fam.cx,2005-11:number>
+    - <tag:manakai@suika.fam.cx,2005-11:non-negative-integer>
+    - <tag:manakai@suika.fam.cx,2005-11:non-negative-number>
+    - <tag:manakai@suika.fam.cx,2005-11:percentage>
+    - <tag:manakai@suika.fam.cx,2005-11:length>
+    - <tag:manakai@suika.fam.cx,2005-11:relative-length>
+    - <tag:manakai@suika.fam.cx,2005-11:absolute-length>
+    - <tag:manakai@suika.fam.cx,2005-11:absolute-length-or-px>
+    - <tag:manakai@suika.fam.cx,2005-11:length-or-percentage>
+    - <tag:manakai@suika.fam.cx,2005-11:angle>
+    - <tag:manakai@suika.fam.cx,2005-11:time>
+    - <tag:manakai@suika.fam.cx,2005-11:frequency>
+    - <tag:manakai@suika.fam.cx,2005-11:string>
+    - <tag:manakai@suika.fam.cx,2005-11:color>
+    - <tag:manakai@suika.fam.cx,2005-11:inheritance>
+  ... as well as URIs used in |typeURI| attribute.
 */
-cx.fam.suika.y2005.CSS.Value.Value.prototype.CSS_CASCADING_VALUE = 10001;
+cx.fam.suika.y2005.CSS.Value.Value.prototype.matchTypeURI =
+function (typeURI) {
+  return (this.getTypeURI () == typeURI);
+};
+
+/**
+   The URI that identifies the type of the value, that is:
+     - <tag:manakai@suika.fam.cx,2005-11:NUMBER> for a number, including
+       unitless zero.
+     - <tag:manakai@suika.fam.cx,2005-11:PERCENTAGE> for a percentage.
+     - <tag:manakai@suika.fam.cx,2005-11:DIMENSION> for a united number.
+     - <tag:manakai@suika.fam.cx,2005-11:STRING> for a string.
+     - <tag:manakai@suika.fam.cx,2005-11:IDENT> for a keyword, including |inherit|.
+     - <tag:manakai@suika.fam.cx,2005-11:FUNCTION> for a functional value,
+       including |url|.
+     - <tag:manakai@suika.fam.cx,2005-11:VALUE_LIST> for a value list.
+     - <tag:manakai@suika.fam.cx,2005-11:UNKNOWN> for an unknown value.
+*/
+cx.fam.suika.y2005.CSS.Value.Value.prototype.getTypeURI = function () {
+  return "tag:manakai@suika.fam.cx,2005-11:CUSTOM";
+};
 
 cx.fam.suika.y2005.CSS.Value.Value.prototype.toString = function () {
   return "[object CSSValue]";
-};
-
-
-/**
-   Interface |CSSCascadeValue|
-   
-   A |CSSCascadeValue| represents a keyword that controls cascading,
-   such as |inherit| or |initial|.
-*/
-cx.fam.suika.y2005.CSS.Value.CascadeValue = function (nsuri, pfx, lname) {
-  cx.fam.suika.y2005.CSS.Value.CascadeValue._superclass.apply (this, []);
-  this.namespaceURI = nsuri;
-  this.prefix = pfx;
-  this.localName = lname;
-};
-cx.fam.suika.y2005.CSS.Value.CascadeValue.inherits
-  (cx.fam.suika.y2005.CSS.Value.Value);
-cx.fam.suika.y2005.CSS.Value.Value.prototype.getCSSValueType = function () {
-  if (this.namespaceURI == "urn:x-suika-fam-cx:css:" &&
-      this.localName == "inherit") {
-    return this.CSS_INHERIT;
-  } else {
-    return this.CSS_CASCADING_VALUE;
-  }
-};
-
-/**
-   The expanded URI of the identifier.
-*/
-cx.fam.suika.y2005.CSS.Value.CascadeValue.prototype.getExpandedURI = function () {
-  return this.namespaceURI + this.localName;
-};
-
-/**
-   The local name of the identifier.
-*/
-cx.fam.suika.y2005.CSS.Value.CascadeValue.prototype.getLocalName = function () {
-  return this.localName;
-};
-
-/**
-   The name of the identifier.
-*/
-cx.fam.suika.y2005.CSS.Value.CascadeValue.prototype.getName = function () {
-  if (this.namespaceURI == "urn:x-suika-fam-cx:css:") {
-    return this.localName;
-  } else {
-    return "-" + this.prefix + "-" + this.localName;
-  }
-};
-
-/**
-   The namespace URI of the identifier.
-*/
-cx.fam.suika.y2005.CSS.Value.CascadeValue.prototype.getNamespaceURI = function () {
-  return this.namespaceURI;
-};
-
-/**
-   The namespace prefix of the identifier, or |null| if no prefix.
-*/
-cx.fam.suika.y2005.CSS.Value.CascadeValue.prototype.getPrefix = function () {
-  return this.prefix;
-};
-
-cx.fam.suika.y2005.CSS.Value.CascadeValue.prototype.getCSSText = function () {
-  return cx.fam.suika.y2005.CSS.Value._EscapeIdent (this.getName ());
-};
-/* Not implemented: |setCSSText| */
-
-cx.fam.suika.y2005.CSS.Value.CascadeValue.prototype.toString = function () {
-  return "[object CSSCascadeValue]";
 };
 
 
@@ -273,17 +321,6 @@ cx.fam.suika.y2005.CSS.Value.PrimitiveValue.inherits
   (cx.fam.suika.y2005.CSS.Value.Value);
 cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.getCSSValueType = function () {
   return this.CSS_PRIMITIVE_VALUE;
-};
-
-/**
-   Returns whether the value is of type or not.
-   
-   @param valueType  The type of the value.
-   @return |true| if match or |false| otherwise.
-*/
-cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.matchPrimitiveType =
-function (valueType) {
-  return (valueType == this.getPrimitiveType ());
 };
 
 /**
@@ -320,16 +357,6 @@ cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_COUNTER    = 23;
 cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_RECT       = 24;
 cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_RGBCOLOR   = 25;
 
-cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_INTEGER    = 10001;
-cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_NON_NEGATIVE_INTEGER = 10002;
-cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_NON_NEGATIVE_NUMBER = 10003;
-cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_LENGTH     = 10004;
-cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_RELATIVE_LENGTH = 10005;
-cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_ABSOLUTE_LENGTH = 10006;
-cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_ANGLE      = 10007;
-cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_TIME       = 10008;
-cx.fam.suika.y2005.CSS.Value.PrimitiveValue.prototype.CSS_FREQUENCY  = 10009;
-
 /* Not implemented: |getCounterValue|, |getFloatValue|, |getRGBColorValue|,
                     |getRectValue|, |getStringValue|, |setFloatValue|,
                     |setStringValue|,  */
@@ -351,6 +378,7 @@ cx.fam.suika.y2005.CSS.Value.NumericValue = function (f, nsuri, pfx, lname) {
 };
 cx.fam.suika.y2005.CSS.Value.NumericValue.inherits
   (cx.fam.suika.y2005.CSS.Value.PrimitiveValue);
+
 cx.fam.suika.y2005.CSS.Value.NumericValue.prototype.getPrimitiveType = function () {
   if (this.namespaceURI == "urn:x-suika-fam-cx:css:") {
     switch (this.localName) {
@@ -377,6 +405,130 @@ cx.fam.suika.y2005.CSS.Value.NumericValue.prototype.getPrimitiveType = function 
     return this.CSS_PERCENTAGE;
   } else {
     return this.CSS_DIMENSION;
+  }
+};
+
+cx.fam.suika.y2005.CSS.Value.NumericValue.prototype.getTypeURI = function () {
+  if (this.namespaceURI != null) {
+    return "tag:manakai@suika.fam.cx,2005-11:DIMENSION";
+  } else if (this.localName == "%") {
+    return "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE";
+  } else { /* unitless */
+    return "tag:manakai@suika.fam.cx,2005-11:NUMBER";
+  }
+};
+
+cx.fam.suika.y2005.CSS.Value.NumericValue.prototype.matchTypeURI =
+function (typeURI) {
+  if (this.namespaceURI != null) {
+    switch (this.namespaceURI + this.localName) {
+    case "urn:x-suika-fam-cx:css:em":
+    case "urn:x-suika-fam-cx:css:ex":
+    case "urn:x-suika-fam-cx:css:gd":
+    case "urn:x-suika-fam-cx:css:rem":
+    case "urn:x-suika-fam-cx:css:vw":
+    case "urn:x-suika-fam-cx:css:vh":
+    case "urn:x-suika-fam-cx:css:vm":
+      switch (typeURI) {
+      case "tag:manakai@suika.fam.cx,2005-11:length":
+      case "tag:manakai@suika.fam.cx,2005-11:length-or-percentage":
+      case "tag:manakai@suika.fam.cx,2005-11:relative-length":
+      case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
+        return true;
+      default:
+        return false;
+      }
+    case "urn:x-suika-fam-cx:css:px":
+      switch (typeURI) {
+      case "tag:manakai@suika.fam.cx,2005-11:length":
+      case "tag:manakai@suika.fam.cx,2005-11:length-or-percentage":
+      case "tag:manakai@suika.fam.cx,2005-11:relative-length":
+      case "tag:manakai@suika.fam.cx,2005-11:absolute-length-or-percentage":
+      case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
+        return true;
+      default:
+        return false;
+      }
+    case "urn:x-suika-fam-cx:css:in":
+    case "urn:x-suika-fam-cx:css:cm":
+    case "urn:x-suika-fam-cx:css:mm":
+    case "urn:x-suika-fam-cx:css:pt":
+    case "urn:x-suika-fam-cx:css:pc":
+      switch (typeURI) {
+      case "tag:manakai@suika.fam.cx,2005-11:length":
+      case "tag:manakai@suika.fam.cx,2005-11:length-or-percentage":
+      case "tag:manakai@suika.fam.cx,2005-11:absolute-length":
+      case "tag:manakai@suika.fam.cx,2005-11:absolute-length-or-percentage":
+      case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
+        return true;
+      default:
+        return false;
+      }
+    case "urn:x-suika-fam-cx:css:deg":
+    case "urn:x-suika-fam-cx:css:grad":
+    case "urn:x-suika-fam-cx:css:rad":
+    case "urn:x-suika-fam-cx:css:turn":
+      switch (typeURI) {
+      case "tag:manakai@suika.fam.cx,2005-11:angle":
+      case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
+        return true;
+      default:
+        return false;
+      }
+    case "urn:x-suika-fam-cx:css:ms":
+    case "urn:x-suika-fam-cx:css:s":
+      switch (typeURI) {
+      case "tag:manakai@suika.fam.cx,2005-11:time":
+      case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
+        return true;
+      default:
+        return false;
+      }
+    case "urn:x-suika-fam-cx:css:hz":
+    case "urn:x-suika-fam-cx:css:khz":
+      switch (typeURI) {
+      case "tag:manakai@suika.fam.cx,2005-11:frequency":
+      case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
+        return true;
+      default:
+        return false;
+      }
+    default:
+      switch (typeURI) {
+      case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
+        return true;
+      default:
+        return false;
+      }
+    }
+  } else if (this.localName == "%") {
+    switch (typeURI) {
+    case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
+    case "tag:manakai@suika.fam.cx,2005-11:percentage":
+    case "tag:manakai@suika.fam.cx,2005-11:length-or-percentage":
+      return true;
+    default:
+      return false;
+    }
+  } else { /* unitless */
+    switch (typeURI) {
+    case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+    case "tag:manakai@suika.fam.cx,2005-11:number":
+      return true;
+    case "tag:manakai@suika.fam.cx,2005-11:length":
+    case "tag:manakai@suika.fam.cx,2005-11:length-or-percentage":
+    case "tag:manakai@suika.fam.cx,2005-11:absolute-length":
+    case "tag:manakai@suika.fam.cx,2005-11:relative-length":
+      return (this.value == 0);
+    case "tag:manakai@suika.fam.cx,2005-11:integer":
+      return (this.value % 1 == 0);
+    case "tag:manakai@suika.fam.cx,2005-11:non-negative-integer":
+      return (this.value % 1 == 0 && this.value >= 0);
+    case "tag:manakai@suika.fam.cx,2005-11:non-negative-number":
+      return (this.value >= 0);
+    default:
+      return false;
+    }
   }
 };
 
@@ -445,88 +597,6 @@ cx.fam.suika.y2005.CSS.Value.NumericValue.prototype.getCSSText = function () {
 };
 /* Not implemented: |setCSSText| */
 
-cx.fam.suika.y2005.CSS.Value.NumericValue.prototype.matchPrimitiveType =
-function (valueType) {
-  var thisType = this.getPrimitiveType ();
-  if (valueType == thisType) return true;
-  switch (valueType) {
-  case this.CSS_LENGTH:
-    switch (this.namespaceURI + this.localName) {
-    case "urn:x-suika-fam-cx:css:em":
-    case "urn:x-suika-fam-cx:css:ex":
-    case "urn:x-suika-fam-cx:css:px":
-    case "urn:x-suika-fam-cx:css:gd":
-    case "urn:x-suika-fam-cx:css:rem":
-    case "urn:x-suika-fam-cx:css:vw":
-    case "urn:x-suika-fam-cx:css:vh":
-    case "urn:x-suika-fam-cx:css:vm":
-    case "urn:x-suika-fam-cx:css:in":
-    case "urn:x-suika-fam-cx:css:cm":
-    case "urn:x-suika-fam-cx:css:mm":
-    case "urn:x-suika-fam-cx:css:pt":
-    case "urn:x-suika-fam-cx:css:pc":
-      return true;
-    }
-    return false;
-  case this.CSS_RELATIVE_LENGTH:
-    switch (this.namespaceURI + this.localName) {
-    case "urn:x-suika-fam-cx:css:em":
-    case "urn:x-suika-fam-cx:css:ex":
-    case "urn:x-suika-fam-cx:css:px":
-    case "urn:x-suika-fam-cx:css:gd":
-    case "urn:x-suika-fam-cx:css:rem":
-    case "urn:x-suika-fam-cx:css:vw":
-    case "urn:x-suika-fam-cx:css:vh":
-    case "urn:x-suika-fam-cx:css:vm":
-      return true;
-    }
-    return false;
-  case this.CSS_ABSOLUTE_LENGTH:
-    switch (this.namespaceURI + this.localName) {
-    case "urn:x-suika-fam-cx:css:in":
-    case "urn:x-suika-fam-cx:css:cm":
-    case "urn:x-suika-fam-cx:css:mm":
-    case "urn:x-suika-fam-cx:css:pt":
-    case "urn:x-suika-fam-cx:css:pc":
-      return true;
-    }
-    return false;
-  case this.CSS_INTEGER:
-    return (valueType == this.CSS_NUMBER && (this.value % 1 == 0));
-  case this.CSS_NON_NEGATIVE_INTEGER:
-    return (valueType == this.CSS_NUMBER && this.value > 0 && (this.value % 1 == 0));
-  case this.CSS_NON_NEGATIVE_NUMBER:
-    return (valueType == this.CSS_NUMBER && this.value > 0);
-  /*
-    Note.  These three types cannot be checked whether it is really
-           of those type literally, since tokenizer discards such information.
-  */
-  case this.CSS_ANGLE:
-    switch (this.namespaceURI + this.localName) {
-    case "urn:x-suika-fam-cx:css:deg":
-    case "urn:x-suika-fam-cx:css:grad":
-    case "urn:x-suika-fam-cx:css:rad":
-    case "urn:x-suika-fam-cx:css:turn":
-      return true;
-    }
-    return false;
-  case this.CSS_TIME:
-    switch (this.namespaceURI + this.localName) {
-    case "urn:x-suika-fam-cx:css:ms":
-    case "urn:x-suika-fam-cx:css:s":
-      return true;
-    }
-    return false;
-  case this.CSS_FREQUENCY:
-    switch (this.namespaceURI + this.localName) {
-    case "urn:x-suika-fam-cx:css:hz":
-    case "urn:x-suika-fam-cx:css:khz":
-      return true;
-    }
-    return false;
-  }
-};
-
 cx.fam.suika.y2005.CSS.Value.NumericValue.prototype.toString = function () {
   return "[object CSSNumericValue]";
 };
@@ -541,8 +611,18 @@ cx.fam.suika.y2005.CSS.Value.StringValue = function (str) {
 };
 cx.fam.suika.y2005.CSS.Value.StringValue.inherits
   (cx.fam.suika.y2005.CSS.Value.PrimitiveValue);
+  
 cx.fam.suika.y2005.CSS.Value.StringValue.prototype.getPrimitiveType = function () {
   return this.CSS_STRING;
+};
+
+cx.fam.suika.y2005.CSS.Value.StringValue.prototype.getTypeURI = function () {
+  return "tag:manakai@suika.fam.cx,2005-11:STRING";
+};
+
+cx.fam.suika.y2005.CSS.Value.StringValue.prototype.matchTypeURI =
+function (typeURI) {
+  return (typeURI.toLowerCase () == "tag:manakai@suika.fam.cx,2005-11:string");
 };
 
 /**
@@ -578,42 +658,82 @@ cx.fam.suika.y2005.CSS.Value.IdentValue = function (nsuri, pfx, lname) {
 };
 cx.fam.suika.y2005.CSS.Value.IdentValue.inherits
   (cx.fam.suika.y2005.CSS.Value.PrimitiveValue);
+
 cx.fam.suika.y2005.CSS.Value.IdentValue.prototype.getPrimitiveType = function () {
-  return this.CSS_IDENT;
+  if (this.namespaceURI + this.localName == "urn:x-suika-fam-cx:css:inherit") {
+    return undefined;
+  } else {
+    return this.CSS_IDENT;
+  }
+};
+
+cx.fam.suika.y2005.CSS.Value.IdentValue.prototype.getTypeURI = function () {
+  return "tag:manakai@suika.fam.cx,2005-11:IDENT";
+};
+
+cx.fam.suika.y2005.CSS.Value.IdentValue.prototype.matchTypeURI =
+function (typeURI) {
+  switch (this.namespaceURI + this.localName) {
+  case "urn:x-suika-fam-cx:css:inherit":
+  case "http://suika.fam.cx/~wakaba/archive/2005/cssc.initial":
+    switch (typeURI) {
+    case "tag:manakai@suika.fam.cx,2005-11:inheritance":
+    case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+      return true;
+    default:
+      return false;
+    }
+  default:
+    if (typeURI == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
+      return true;
+    } else {
+      return false;
+    }
+  }
 };
 
 /**
    The expanded URI of the identifier.
 */
-cx.fam.suika.y2005.CSS.Value.IdentValue.prototype.getExpandedURI =
-  cx.fam.suika.y2005.CSS.Value.CascadeValue.prototype.getExpandedURI;
+cx.fam.suika.y2005.CSS.Value.IdentValue.prototype.getExpandedURI = function () {
+  return this.namespaceURI + this.localName;
+};
 
 /**
    The local name of the identifier.
 */
-cx.fam.suika.y2005.CSS.Value.IdentValue.prototype.getLocalName =
-  cx.fam.suika.y2005.CSS.Value.CascadeValue.prototype.getLocalName;
+cx.fam.suika.y2005.CSS.Value.IdentValue.prototype.getLocalName = function () {
+  return this.localName;
+};
 
 /**
    The name of the identifier.
 */
-cx.fam.suika.y2005.CSS.Value.IdentValue.prototype.getName =
-  cx.fam.suika.y2005.CSS.Value.CascadeValue.prototype.getName;
+cx.fam.suika.y2005.CSS.Value.IdentValue.prototype.getName = function () {
+  if (this.namespaceURI == "urn:x-suika-fam-cx:css:") {
+    return this.localName;
+  } else {
+    return "-" + this.prefix + "-" + this.localName;
+  }
+};
 
 /**
    The namespace URI of the identifier.
 */
-cx.fam.suika.y2005.CSS.Value.IdentValue.prototype.getNamespaceURI =
-  cx.fam.suika.y2005.CSS.Value.CascadeValue.prototype.getNamespaceURI;
+cx.fam.suika.y2005.CSS.Value.IdentValue.prototype.getNamespaceURI = function () {
+  return this.namespaceURI;
+};
 
 /**
    The namespace prefix of the identifier, or |null| if no prefix.
 */
-cx.fam.suika.y2005.CSS.Value.IdentValue.prototype.getPrefix =
-  cx.fam.suika.y2005.CSS.Value.CascadeValue.prototype.getPrefix;
+cx.fam.suika.y2005.CSS.Value.IdentValue.prototype.getPrefix = function () {
+  return this.prefix;
+};
 
-cx.fam.suika.y2005.CSS.Value.IdentValue.prototype.getCSSText =
-  cx.fam.suika.y2005.CSS.Value.CascadeValue.prototype.getCSSText;
+cx.fam.suika.y2005.CSS.Value.IdentValue.prototype.getCSSText = function () {
+  return cx.fam.suika.y2005.CSS.Value._EscapeIdent (this.getName ());
+};
 /* Not implemented: |setCSSText| */
 
 cx.fam.suika.y2005.CSS.Value.IdentValue.prototype.toString = function () {
@@ -632,8 +752,26 @@ cx.fam.suika.y2005.CSS.Value.FunctionValue = function (nsuri, pfx, lname) {
 };
 cx.fam.suika.y2005.CSS.Value.FunctionValue.inherits
   (cx.fam.suika.y2005.CSS.Value.PrimitiveValue);
+
 cx.fam.suika.y2005.CSS.Value.FunctionValue.prototype.getPrimitiveType = function () {
   return this.CSS_CUSTOM;
+};
+
+cx.fam.suika.y2005.CSS.Value.FunctionValue.prototype.getTypeURI = function () {
+  return "tag:manakai@suika.fam.cx,2005-11:FUNCTION";
+};
+
+cx.fam.suika.y2005.CSS.Value.FunctionValue.prototype.matchTypeURI =
+function (typeURI) {
+  return (typeURI == "tag:manakai@suika.fam.cx,2005-11:FUNCTION");
+};
+
+/**
+   The function name expanded URI.
+*/
+cx.fam.suika.y2005.CSS.Value.FunctionValue.prototype.getFunctionExpandedURI =
+function () {
+  return this.functionNamespaceURI + this.functionLocalName;
 };
 
 /**
@@ -693,6 +831,7 @@ cx.fam.suika.y2005.CSS.Value.URIValue = function (uriArg, baseURIArg) {
 };
 cx.fam.suika.y2005.CSS.Value.URIValue.inherits
   (cx.fam.suika.y2005.CSS.Value.FunctionValue);
+
 cx.fam.suika.y2005.CSS.Value.URIValue.prototype.getPrimitiveType = function () {
   return this.CSS_URI;
 };
@@ -739,8 +878,20 @@ cx.fam.suika.y2005.CSS.Value.RGBValue = function (r, g, b) {
 };
 cx.fam.suika.y2005.CSS.Value.RGBValue.inherits
   (cx.fam.suika.y2005.CSS.Value.FunctionValue);
+
 cx.fam.suika.y2005.CSS.Value.RGBValue.prototype.getPrimitiveType = function () {
   return this.CSS_RGBCOLOR;
+};
+
+cx.fam.suika.y2005.CSS.Value.RGBValue.prototype.matchTypeURI =
+function (typeURI) {
+  switch (typeURI) {
+  case "tag:manakai@suika.fam.cx,2005-11:color":
+  case "tag:manakai@suika.fam.cx,2005-11:FUNCTION":
+    return true;
+  default:
+    return false;
+  }
 };
 
 /**
@@ -765,10 +916,10 @@ cx.fam.suika.y2005.CSS.Value.RGBValue.prototype.getBlue = function () {
 };
 
 
-cx.fam.suika.y2005.CSS.Value.StringValue.prototype.getCSSText = function () {
+cx.fam.suika.y2005.CSS.Value.RGBValue.prototype.getCSSText = function () {
   return 'rgb('
-       + this.red.getCSSText () + ","
-       + this.green.getCSSText () + ","
+       + this.red.getCSSText () + ", "
+       + this.green.getCSSText () + ", "
        + this.blue.getCSSText ()
        + ')';
 };
@@ -776,6 +927,149 @@ cx.fam.suika.y2005.CSS.Value.StringValue.prototype.getCSSText = function () {
 
 cx.fam.suika.y2005.CSS.Value.RGBValue.prototype.toString = function () {
   return "[object CSSRGBValue]";
+};
+
+
+/**
+   Interface |CSSRGBAValue| extends |CSSRGBValue|
+*/
+cx.fam.suika.y2005.CSS.Value.RGBAValue = function (r, g, b, a) {
+  cx.fam.suika.y2005.CSS.Value.FunctionValue.apply
+    (this, ["urn:x-suika-fam-cx:css:", null, "rgba"]);
+  this.red = r;
+  this.green = g;
+  this.blue = b;
+  this.alpha = a;
+};
+cx.fam.suika.y2005.CSS.Value.RGBAValue.inherits
+  (cx.fam.suika.y2005.CSS.Value.RGBValue);
+
+cx.fam.suika.y2005.CSS.Value.RGBAValue.prototype.getPrimitiveType = function () {
+  return this.CSS_UNKNOWN;
+};
+
+/**
+   The alpha value.
+   [non-standard]
+*/
+cx.fam.suika.y2005.CSS.Value.RGBAValue.prototype.getAlpha = function () {
+  return this.alpha;
+};
+cx.fam.suika.y2005.CSS.Value.RGBAValue.prototype.setAlpha = function (newValue) {
+  this.alpha = newValue;
+};
+
+cx.fam.suika.y2005.CSS.Value.RGBAValue.prototype.getCSSText = function () {
+  return 'rgba('
+       + this.red.getCSSText () + ", "
+       + this.green.getCSSText () + ", "
+       + this.blue.getCSSText () + ", "
+       + this.alpha.getCSSText ()
+       + ')';
+};
+/* Not implemented: |setCSSText| */
+
+cx.fam.suika.y2005.CSS.Value.RGBAValue.prototype.toString = function () {
+  return "[object CSSRGBAValue]";
+};
+
+
+/**
+   Interface |CSSHSLValue|
+*/
+cx.fam.suika.y2005.CSS.Value.HSLValue = function (h, s, l) {
+  cx.fam.suika.y2005.CSS.Value.HSLValue._superclass.apply
+    (this, ["urn:x-suika-fam-cx:css:", null, "hsl"]);
+  this.hue = h;
+  this.saturation = s;
+  this.lightness = l;
+};
+cx.fam.suika.y2005.CSS.Value.HSLValue.inherits
+  (cx.fam.suika.y2005.CSS.Value.FunctionValue);
+
+cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.matchTypeURI =
+function (typeURI) {
+  switch (typeURI) {
+  case "tag:manakai@suika.fam.cx,2005-11:color":
+  case "tag:manakai@suika.fam.cx,2005-11:FUNCTION":
+    return true;
+  default:
+    return false;
+  }
+};
+
+/**
+   The hue value.
+*/
+cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.getHue = function () {
+  return this.hue;
+};
+
+/**
+   The saturation value.
+*/
+cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.getSaturation = function () {
+  return this.saturation;
+};
+
+/**
+   The lightness value.
+*/
+cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.getLightness = function () {
+  return this.lightness;
+};
+
+
+cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.getCSSText = function () {
+  return 'hsl('
+       + this.hue.getCSSText () + ", "
+       + this.saturation.getCSSText () + ", "
+       + this.lightness.getCSSText ()
+       + ')';
+};
+/* Not implemented: |setCSSText| */
+
+cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.toString = function () {
+  return "[object CSSHSLValue]";
+};
+
+
+/**
+   Interface |CSSHSLAValue| extends |CSSHSLValue|
+*/
+cx.fam.suika.y2005.CSS.Value.HSLAValue = function (h, s, l, a) {
+  cx.fam.suika.y2005.CSS.Value.FunctionValue.apply
+    (this, ["urn:x-suika-fam-cx:css:", null, "hsla"]);
+  this.hue = h;
+  this.saturation = s;
+  this.lightness = l;
+  this.alpha = a;
+};
+cx.fam.suika.y2005.CSS.Value.HSLAValue.inherits
+  (cx.fam.suika.y2005.CSS.Value.HSLValue);
+
+/**
+   The alpha value.
+*/
+cx.fam.suika.y2005.CSS.Value.HSLAValue.prototype.getAlpha = function () {
+  return this.alpha;
+};
+cx.fam.suika.y2005.CSS.Value.HSLAValue.prototype.setAlpha = function (newValue) {
+  this.alpha = newValue;
+};
+
+cx.fam.suika.y2005.CSS.Value.HSLAValue.prototype.getCSSText = function () {
+  return 'hsla('
+       + this.hue.getCSSText () + ", "
+       + this.saturation.getCSSText () + ", "
+       + this.lightness.getCSSText () + ", "
+       + this.alpha.getCSSText ()
+       + ')';
+};
+/* Not implemented: |setCSSText| */
+
+cx.fam.suika.y2005.CSS.Value.HSLAValue.prototype.toString = function () {
+  return "[object CSSHSLAValue]";
 };
 
 
@@ -791,6 +1085,14 @@ cx.fam.suika.y2005.CSS.Value.ValueList = function () {
 };
 cx.fam.suika.y2005.CSS.Value.ValueList.inherits
   (cx.fam.suika.y2005.CSS.Value.Value);
+
+cx.fam.suika.y2005.CSS.Value.ValueList.prototype.getTypeURI = function () {
+  return "tag:manakai@suika.fam.cx,2005-11:VALUE_LIST";
+};
+
+cx.fam.suika.y2005.CSS.Value.ValueList.prototype.matchTypeURI = function (typeURI) {
+  return (typeURI == "tag:manakai@suika.fam.cx,2005-11:VALUE_LIST");
+};
 
 /**
    Returns the |index|th value in the list, if any, or |null|.
@@ -821,7 +1123,7 @@ cx.fam.suika.y2005.CSS.Value.ValueList.prototype.toString = function () {
   return "[object CSSValueList]";
 };
 
-/* Revision: $Date: 2005/11/05 12:04:34 $ */
+/* Revision: $Date: 2005/11/06 14:24:23 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

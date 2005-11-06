@@ -123,7 +123,7 @@ cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement = function (node) {
 cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement.inherits
   (cx.fam.suika.y2005.DOM.Node.Element);
 
-cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement.prototype._SetComputedStyle =
+cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement.prototype._SetComputedStyle_ =
 function (computedStyle) {
   this._Node._ComputedStyle = computedStyle;
   
@@ -141,8 +141,6 @@ function (computedStyle) {
   }
   
   var copyProps = [
-    ["urn:x-suika-fam-cx:css:", "float",
-     this._EngineName == "Trident" ? "styleFloat" : "cssFloat"],
     ["urn:x-suika-fam-cx:css:", "position", "position"],
     ["urn:x-suika-fam-cx:css:", "visibility", "visibility"]
   ];
@@ -210,6 +208,155 @@ function (computedStyle) {
   }
 };
 
+cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement.prototype
+._SetComputedStyle_Default =
+function (computedStyle) {
+  var copyProps = [
+    ["urn:x-suika-fam-cx:css:", "float", "cssFloat"],
+    ["urn:x-suika-fam-cx:css:", "color", "color"],
+    ["urn:x-suika-fam-cx:css:", "opacity", "opacity"]
+  ];
+  for (var i in copyProps) {
+    var prop = computedStyle.getSpecifiedPropertyValueNS
+                 (copyProps[i][0], copyProps[i][1]);
+    this._Node.style[copyProps[i][2]] = prop.getCSSText ();
+  }
+};
+
+cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement.prototype
+._SetComputedStyle_Opera8 =
+function (computedStyle) {
+  var copyProps = [
+    ["urn:x-suika-fam-cx:css:", "float", "cssFloat"],
+    ["urn:x-suika-fam-cx:css:", "opacity", "opacity"]
+      /* Opera 8 does not support |opacity| */
+  ];
+  for (var i in copyProps) {
+    var prop = computedStyle.getSpecifiedPropertyValueNS
+                 (copyProps[i][0], copyProps[i][1]);
+    this._Node.style[copyProps[i][2]] = prop.getCSSText ();
+  }
+  
+  /* color properties */
+  copyProps = [
+    ["urn:x-suika-fam-cx:css:", "color", "color"]
+      /* TODO: |flavor| system color introduced in CSS3 */
+  ];
+  P: for (var i in copyProps) {
+    var prop = computedStyle.getSpecifiedPropertyValueNS
+                 (copyProps[i][0], copyProps[i][1]);
+    if (prop.getAlpha) {
+      switch (prop.getAlpha ().getValue ()) {
+      case 0:
+        this._Node.style[copyProps[i][2]]
+          = "rgb(" + prop.getRed ().getCSSText () + ", " +
+                     prop.getGreen ().getCSSText () + ", " +
+                     prop.getBlue ().getCSSText () + ")";
+        continue P;
+      case 1:
+        this._Node.style[copyProps[i][2]] = "transparent";
+        continue P;
+      }
+    }
+    var prop = computedStyle.getSpecifiedPropertyValueNS
+                 (copyProps[i][0], copyProps[i][1]);
+    this._Node.style[copyProps[i][2]] = prop.getCSSText ();
+  }
+};
+
+cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement.prototype._SetComputedStyle_Gecko =
+function (computedStyle) {
+  var copyProps = [
+    ["urn:x-suika-fam-cx:css:", "float", "cssFloat"],
+    ["urn:x-suika-fam-cx:css:", "opacity", "opacity"]
+  ];
+  for (var i in copyProps) {
+    var prop = computedStyle.getSpecifiedPropertyValueNS
+                 (copyProps[i][0], copyProps[i][1]);
+    this._Node.style[copyProps[i][2]] = prop.getCSSText ();
+  }
+  
+  /* color properties */
+  copyProps = [
+    ["urn:x-suika-fam-cx:css:", "color", "color"]
+      /* TODO: |flavor| system color introduced in CSS3 */
+  ];
+  P: for (var i in copyProps) {
+    var prop = computedStyle.getSpecifiedPropertyValueNS
+                 (copyProps[i][0], copyProps[i][1]);
+    if (prop.getAlpha) {
+      switch (prop.getAlpha ().getValue ()) {
+      case 0:
+        this._Node.style[copyProps[i][2]]
+          = "rgb(" + prop.getRed ().getCSSText () + ", " +
+                     prop.getGreen ().getCSSText () + ", " +
+                     prop.getBlue ().getCSSText () + ")";
+        continue P;
+      case 1:
+        this._Node.style[copyProps[i][2]] = "transparent";
+        continue P;
+      }
+    }
+    this._Node.style[copyProps[i][2]] = prop.getCSSText ();
+  }
+};
+
+
+cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement.prototype
+._SetComputedStyle_Trident6 =
+function (computedStyle) {
+  var copyProps = [
+    ["urn:x-suika-fam-cx:css:", "float", "styleFloat"]
+                           /* In WinIE6 no |cssFloat| but |styleFloat| */
+  ];
+  for (var i in copyProps) {
+    var prop = computedStyle.getSpecifiedPropertyValueNS
+                 (copyProps[i][0], copyProps[i][1]);
+    try {
+      this._Node.style[copyProps[i][2]] = prop.getCSSText ();
+    } catch (e) {
+      /* In WinIE6 setting non-supported value raises an exception */
+    }
+  }
+  
+  /* color properties */
+  copyProps = [
+    ["urn:x-suika-fam-cx:css:", "color", "color"]
+      /* TODO: |flavor| system color introduced in CSS3 */
+  ];
+  P: for (var i in copyProps) {
+    var prop = computedStyle.getSpecifiedPropertyValueNS
+                 (copyProps[i][0], copyProps[i][1]);
+    try {
+      if (prop.getAlpha) {
+        switch (prop.getAlpha ().getValue ()) {
+        case 0:
+          this._Node.style[copyProps[i][2]]
+            = "rgb(" + prop.getRed ().getCSSText () + ", " +
+                       prop.getGreen ().getCSSText () + ", " +
+                       prop.getBlue ().getCSSText () + ")";
+          continue P;
+        case 1:
+          this._Node.style[copyProps[i][2]] = "transparent";
+          continue P;
+        }
+      }
+      this._Node.style[copyProps[i][2]] = prop.getCSSText ();
+    } catch (e) {
+      //
+    }
+  } /* P */
+  
+  var prop = computedStyle.getSpecifiedPropertyValueNS
+                 ("urn:x-suika-fam-cx:css:", "opacity");
+  try {
+    this._Node.style.filter = "progid:DXImageTransform.Microsoft.Alpha(opacity="
+                            + Math.floor (prop.getValue () * 100) + ")";
+  } catch (e) {
+    //
+  }
+};
+
 cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement.prototype._CreateCSSElement
   = cx.fam.suika.y2005.WebUA.VDocument.VWindowElement.prototype._CreateCSSElement;
 cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement.prototype.appendNewCSSAnonymousText
@@ -224,19 +371,39 @@ if (window.navigator.userAgent.match (/\bOpera[\/ ](\d+\.\d+)/)) {
   cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement.prototype._EngineName = "Opera";
   cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement.prototype._EngineVersion
     = parseFloat (RegExp.$1);
+  cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement.prototype._SetComputedStyle =
+  function (computedStyle) {
+    this._SetComputedStyle_ (computedStyle);
+    this._SetComputedStyle_Opera8 (computedStyle);
+  };
 } else if (window.navigator.userAgent.match (/\bGecko\/(\d+)/)) {
   cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement.prototype._EngineName = "Gecko";
   cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement.prototype._EngineVersion
     = parseInt (RegExp.$1);
+  cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement.prototype._SetComputedStyle =
+  function (computedStyle) {
+    this._SetComputedStyle_ (computedStyle);
+    this._SetComputedStyle_Gecko (computedStyle);
+  };
 } else if (window.navigator.userAgent.match (/\bMSIE (\d+\.\d+)/)) {
   cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement.prototype._EngineName
     = "Trident";
   cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement.prototype._EngineVersion
     = parseInt (RegExp.$1);
+  cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement.prototype._SetComputedStyle =
+  function (computedStyle) {
+    this._SetComputedStyle_ (computedStyle);
+    this._SetComputedStyle_Trident6 (computedStyle);
+  };
 } else {
   cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement.prototype._EngineName
     = "Unknown";
   cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement.prototype._EngineVersion = 0;
+  cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement.prototype._SetComputedStyle =
+  function (computedStyle) {
+    this._SetComputedStyle_ (computedStyle);
+    this._SetComputedStyle_Default (computedStyle);
+  };
 }
 
 cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement.prototype.toString =
@@ -258,7 +425,7 @@ cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSInlineElement = function () {
 cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSInlineElement.inherits
   (cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement);
 
-/* Revision: $Date: 2005/11/05 12:04:34 $ */
+/* Revision: $Date: 2005/11/06 14:24:23 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

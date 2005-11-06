@@ -1,3 +1,13 @@
+2005-11-06  Wakaba  <w@suika.fam.cx>
+
+	* SimpleParser.js: Don't use |RegExp.rightContext|, which
+	is not part of ECMAScript standard and Opera 8 does not support.
+	Changes lexical parsing mode back to |CON| after |pic|.
+	Reports an error if an element is not closed by an end tag
+	at the end of the entity.
+	
+	* SimpleSerializer.js: Don't use |new Array| constructor.
+
 2005-11-05  Wakaba  <w@suika.fam.cx>
 
 	* SimpleParser.js (parseStringWithContext): Don't turns |isDoc|

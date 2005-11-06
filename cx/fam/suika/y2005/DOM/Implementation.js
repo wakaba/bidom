@@ -89,7 +89,7 @@ cx.fam.suika.y2005.DOM.Implementation._FeatureModule
 /* DOMImplementation */
 
 cx.fam.suika.y2005.DOM.Implementation.DOMImplementation = function (impl) {
-  this._Impl = impl;  /* Original DOMImplementation object */
+  this._Impl = impl;  /* Original DOMImplementation object, if any */
   for (var i in cx.fam.suika.y2005.DOM.Implementation.DOMImplementation._Constructor) {
     cx.fam.suika.y2005.DOM.Implementation.DOMImplementation._Constructor[i].apply
       (this, arguments);

@@ -123,8 +123,11 @@ function (authorStyleSheetList, rootElement, mediaManager) {
        
        ["urn:x-suika-fam-cx:css:", "position"],
          /* after |top|, |bottom|, |right|, |left|, |direction| */
-       ["http://suika.fam.cx/~wakaba/archive/2005/11/css.props.", "display"]
+       ["http://suika.fam.cx/~wakaba/archive/2005/11/css.props.", "display"],
          /* after |display|, |position|, and |float| */
+      
+       ["urn:x-suika-fam-cx:css:", "color"],
+       ["urn:x-suika-fam-cx:css:", "opacity"]
       ];
                   /* mediaManager._GetSupportedPropertyNameList */
     this._ComputeSpecifiedValue (proplist, vals, el[1], mediaManager);
@@ -406,32 +409,28 @@ function (propList, propSet, parentPropSet, mediaManager) {
     }
     var val = propSet.getSpecifiedPropertyValueNS (pn[0], pn[1]);
     var ppfx = propSet._GetPropertyPrefix (pn[0], pn[1]);
-    switch (val.getCSSValueType ()) {
-    case val.CSS_INHERIT:
-    case val.CSS_CASCADING_VALUE:
+    switch (val.getTypeURI ()) {
+    case "tag:manakai@suika.fam.cx,2005-11:IDENT":
       var setToInitial = false;
       var p2 = false;
-      switch (val.getNamespaceURI ()) {
-      case "urn:x-suika-fam-cx:css:":
-        switch (val.getLocalName ()) {
-        case "inherit":
-          if (parentPropSet != null) {
-            propSet.setPropertyValueNS
+      switch (val.getExpandedURI ()) {
+      case "urn:x-suika-fam-cx:css:inherit":
+        if (parentPropSet != null) {
+          propSet.setPropertyValueNS
               (pn[0], ppfx, pn[1],
                parentPropSet.getSpecifiedPropertyValueNS (pn[0], pn[1]));
-            continue P;
-          } else {
-            setToInitial = true;
-          }
-        }
-      case "http://suika.fam.cx/~wakaba/archive/2005/cssc.":
-        switch (val.getLocalName ()) {
-        case "initial":
+          continue P;
+        } else {
           setToInitial = true;
           break;
-        default:
-          p2 = true;
         }
+      case "http://suika.fam.cx/~wakaba/archive/2005/cssc.initial":
+      case "urn:x-suika-fam-cx:css:-moz-initial":
+        setToInitial = true;
+        break;
+      case "http://suika.fam.cx/~wakaba/archive/2005/cssc.left-or-right-by-direction":
+        p2 = true;
+        break;
       }
       if (setToInitial) {
         var p = cx.fam.suika.y2005.CSS.Property._Prop[pn[0]] != null
@@ -439,24 +438,20 @@ function (propList, propSet, parentPropSet, mediaManager) {
         propSet.setPropertyValueNS (pn[0], ppfx, pn[1], p.initial);
         p2 = true;
       }
-      if (p2 &&
-          val.getCSSValueType () == val.CSS_CASCADING_VALUE &&
-          val.getNamespaceURI () == "http://suika.fam.cx/~wakaba/archive/2005/cssc.") {
-        switch (val.getLocalName ()) {
-        case "left-or-right-by-direction":
+      if (p2 && val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
+        switch (val.getExpandedURI ()) {
+        case "http://suika.fam.cx/~wakaba/archive/2005/cssc.left-or-right-by-direction":
           var dirval = propSet.getSpecifiedPropertyValueNS
                          ("urn:x-suika-fam-cx:css:", "direction");
-          if (dirval && dirval.getCSSValueType () == dirval.CSS_PRIMITIVE_VALUE &&
-              dirval.getPrimitiveType () == dirval.CSS_IDENT &&
-              dirval.getNamespaceURI () == "urn:x-suika-fam-cx:css:") {
-            switch (dirval.getLocalName ()) {
-            case "ltr":
+          if (dirval.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
+            switch (dirval.getExpandedURI ()) {
+            case "urn:x-suika-fam-cx:css:ltr":
               propSet.setPropertyValueNS
                 (pn[0], ppfx, pn[1],
                  new cx.fam.suika.y2005.CSS.Value.IdentValue
                    ("urn:x-suika-fam-cx:css:", null, "left"));
               break;
-            case "rtl":
+            case "urn:x-suika-fam-cx:css:rtl":
               propSet.setPropertyValueNS
                 (pn[0], ppfx, pn[1],
                  new cx.fam.suika.y2005.CSS.Value.IdentValue
@@ -464,9 +459,9 @@ function (propList, propSet, parentPropSet, mediaManager) {
               break;
             }
           }
-        }
-      }
-      continue P;
+        } /* val */
+        continue P;
+      } /* p2 */
     } /* CASCADING_VALUE */
     
     var p = cx.fam.suika.y2005.CSS.Property._Prop[pn[0]] != null
@@ -590,11 +585,13 @@ cx.fam.suika.y2005.CSS.Property.PropertySet.prototype.toString = function () {
 cx.fam.suika.y2005.CSS.Property._PropImpl = function (v) {
   this._AllowedKeyword = [];
   this._AllowedKeyword["urn:x-suika-fam-cx:css:"] = {
-    inherit: true
+    inherit: true,
+    "-moz-initial": true
   };
   this._AllowedKeyword["http://suika.fam.cx/~wakaba/archive/2005/cssc."] = {
     initial: true
   };
+  this._AllowedFunction = {};
   for (var i in v) {
     switch (i) {
     case "allowedKeyword":
@@ -605,6 +602,17 @@ cx.fam.suika.y2005.CSS.Property._PropImpl = function (v) {
         if (!this._AllowedKeyword[ns]) this._AllowedKeyword[ns] = [];
         for (var j in lns) {
           this._AllowedKeyword[ns][lns[j]] = true;
+        }
+      }
+      break;
+    case "allowedFunction":
+      while (true) {
+        var ns = v[i].shift ();
+        var lns = v[i].shift ();
+        if (lns == null) break;
+        if (!this._AllowedFunction[ns]) this._AllowedFunction[ns] = [];
+        for (var j in lns) {
+          this._AllowedFunction[ns][lns[j]] = true;
         }
       }
       break;
@@ -650,11 +658,7 @@ cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword.prototype.parsePropertyValue =
 function (block, prop) {
   var val = this._GetNextValue ();
   if (val == null) return false;
-  var valtype = val.getCSSValueType ();
-  if ((valtype == val.CSS_PRIMITIVE_VALUE &&
-       val.getPrimitiveType () == val.CSS_IDENT) ||
-      valtype == val.CSS_INHERIT ||
-      valtype == val.CSS_CASCADING_VALUE) {
+  if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
     var im = this._GetPriority ();
     if (im) {
       var p = this._Factory.createCSSPropertyNS
@@ -663,7 +667,7 @@ function (block, prop) {
       block.appendPropertyNode (p);
       return true;
     }
-  }
+  } /* val */
 };
 
 /**
@@ -673,11 +677,7 @@ function (block, prop) {
 cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword.prototype.setSpecifiedValues =
 function (ns, pfx, ln, prop, propset) {
   var val = prop.getPropertyValue ();
-  var valtype = val.getCSSValueType ();
-  if ((valtype == val.CSS_PRIMITIVE_VALUE &&
-       val.getPrimitiveType () == val.CSS_IDENT) ||
-      valtype == val.CSS_INHERIT ||
-      valtype == val.CSS_CASCADING_VALUE) {
+  if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
     var valns = val.getNamespaceURI ();
     if (this._AllowedKeyword[valns]) {
       if (this._AllowedKeyword[valns][val.getLocalName ()]) {
@@ -703,13 +703,10 @@ function (block, prop, propDef) {
   var val = this._GetNextValue ();
   if (val == null) return false;
   var valtype = val.getCSSValueType ();
-  if ((valtype == val.CSS_PRIMITIVE_VALUE &&
-       (val.matchPrimitiveType (val.CSS_LENGTH) ||
-        val.matchPrimitiveType (val.CSS_PERCENTAGE) ||
-        val.getPrimitiveType () == val.CSS_IDENT ||
-        (propDef._NumberAllowed && val.getPrimitiveType () == val.CSS_NUMBER))) ||
-      valtype == val.CSS_INHERIT ||
-      valtype == val.CSS_CASCADING_VALUE) {
+  if (val.matchTypeURI ("tag:manakai@suika.fam.cx,2005-11:length-or-percentage") ||
+      val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" ||
+      (propDef._NumberAllowed &&
+       val.matchTypeURI ("tag:manakai@suika.fam.cx,2005-11:number"))) {
     var im = this._GetPriority ();
     if (im) {
       var p = this._Factory.createCSSPropertyNS
@@ -724,61 +721,600 @@ function (block, prop, propDef) {
 cx.fam.suika.y2005.CSS.Property._PropImpl_Length.prototype.setSpecifiedValues =
 function (ns, pfx, ln, prop, propSet) {
   var val = prop.getPropertyValue ();
-  var valtype = val.getCSSValueType ();
-  if (valtype == val.CSS_PRIMITIVE_VALUE) {
-    var ptype = val.getPrimitiveType ();
-    if (val.matchPrimitiveType (val.CSS_LENGTH)) {
-      switch (val.getUnitExpandedURI ()) {
-      case "urn:x-suika-fam-cx:css:em":
-        /* TODO */
-        if (!this._NegativeNotAllowed || val.getValue () >= 0) {
-          propSet.setPropertyValueNS (ns, pfx, ln, val);
-        }
-        break;
-      case "urn:x-suika-fam-cx:css:px":
-      case "urn:x-suika-fam-cx:css:vw":
-      case "urn:x-suika-fam-cx:css:vh":
-      case "urn:x-suika-fam-cx:css:vm":
-      case "urn:x-suika-fam-cx:css:in":
-      case "urn:x-suika-fam-cx:css:cm":
-      case "urn:x-suika-fam-cx:css:mm":
-      case "urn:x-suika-fam-cx:css:pt":
-      case "urn:x-suika-fam-cx:css:pc":
-        if (!this._NegativeNotAllowed || val.getValue () >= 0) {
-          propSet.setPropertyValueNS (ns, pfx, ln, val);
-        }
-        break;
-      case "urn:x-suika-fam-cx:css:gd":
-      case "urn:x-suika-fam-cx:css:rem":
-      case "urn:x-suika-fam-cx:css:ex":
-        /* TODO */
-        if (!this._NegativeNotAllowed || val.getValue () >= 0) {
-          propSet.setPropertyValueNS (ns, pfx, ln, val);
-        }
-        break;
-      default:
-      }
-    } else if (val.matchPrimitiveType (val.CSS_PERCENTAGE)) {
+  if (val.matchTypeURI ("tag:manakai@suika.fam.cx,2005-11:length-or-percentage")) {
+    switch (val.getUnitExpandedURI ()) {
+    case "urn:x-suika-fam-cx:css:em":
+      /* TODO */
       if (!this._NegativeNotAllowed || val.getValue () >= 0) {
         propSet.setPropertyValueNS (ns, pfx, ln, val);
       }
       return;
-    } else if (this._NumberAllowed && ptype == val.CSS_NUMBER) {
+    case "urn:x-suika-fam-cx:css:px":
+    case "urn:x-suika-fam-cx:css:vw":
+    case "urn:x-suika-fam-cx:css:vh":
+    case "urn:x-suika-fam-cx:css:vm":
+    case "urn:x-suika-fam-cx:css:in":
+    case "urn:x-suika-fam-cx:css:cm":
+    case "urn:x-suika-fam-cx:css:mm":
+    case "urn:x-suika-fam-cx:css:pt":
+    case "urn:x-suika-fam-cx:css:pc":
       if (!this._NegativeNotAllowed || val.getValue () >= 0) {
         propSet.setPropertyValueNS (ns, pfx, ln, val);
       }
       return;
+    case "urn:x-suika-fam-cx:css:gd":
+    case "urn:x-suika-fam-cx:css:rem":
+    case "urn:x-suika-fam-cx:css:ex":
+      /* TODO */
+      if (!this._NegativeNotAllowed || val.getValue () >= 0) {
+        propSet.setPropertyValueNS (ns, pfx, ln, val);
+      }
+      return;
+    case "%":
+      if (!this._NegativeNotAllowed || val.getValue () >= 0) {
+        propSet.setPropertyValueNS (ns, pfx, ln, val);
+      }
+      return;
+    case null: /* zero */
+      if (!this._NegativeNotAllowed || val.getValue () >= 0) {
+        propSet.setPropertyValueNS (ns, pfx, ln, val);
+      }
+      return;
+    default:
     }
-  }
-  if ((valtype == val.CSS_PRIMITIVE_VALUE &&
-       val.getPrimitiveType () == val.CSS_IDENT) ||
-      valtype == val.CSS_INHERIT ||
-      valtype == val.CSS_CASCADING_VALUE) {
+  } else if (this._NumberAllowed &&
+             val.matchTypeURI ("tag:manakai@suika.fam.cx,2005-11:number")) {
+    if (!this._NegativeNotAllowed || val.getValue () >= 0) {
+      propSet.setPropertyValueNS (ns, pfx, ln, val);
+    }
+    return;
+  } else if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
     var valns = val.getNamespaceURI ();
     if (this._AllowedKeyword[valns]) {
       if (this._AllowedKeyword[valns][val.getLocalName ()]) {
         propSet.setPropertyValueNS (ns, pfx, ln, val);
       }
+    }
+  } /* val */
+};
+
+
+/**
+   A template for property definitions that allows a color.
+*/
+cx.fam.suika.y2005.CSS.Property._PropImpl_Color = function () {
+  cx.fam.suika.y2005.CSS.Property._PropImpl_Color._superclass.apply
+    (this, arguments);
+  this._AllowedFunction["urn:x-suika-fam-cx:css:"] = {
+    rgb: true,
+    rgba: true,
+    hsl: true,
+    hsla: true
+  };
+  var kwd = [
+    /* X11 color keywords */
+    "aliceblue", "antiquewhite", "aqua", "aquamarine", "azure", "beige", 
+    "bisque", "black", "blanchedalmond", "blue", "blueviolet", "brown", 
+    "burlywood", "cadetblue", "chartreuse", "chocolate", "coral", 
+    "cornflowerblue", "cornsilk", "crimson", "cyan", "darkblue", 
+    "darkcyan", "darkgoldenrod", "darkgray", "darkgreen", "darkgrey", 
+    "darkkhaki", "darkmagenta", "darkolivegreen", "darkorange", "darkorchid", 
+    "darkred", "darksalmon", "darkseagreen", "darkslateblue", "darkslategray", 
+    "darkslategrey", "darkturquoise", "darkviolet", "deeppink", "deepskyblue", 
+    "dimgray", "dimgrey", "dodgerblue", "firebrick", "floralwhite", 
+    "forestgreen", "fuchsia", "gainsboro", "ghostwhite", "gold", "goldenrod", 
+    "gray", "green", "greenyellow", "grey", "honeydew", "hotpink", 
+    "indianred", "indigo", "ivory", "khaki", "lavender", "lavenderblush", 
+    "lawngreen", "lemonchiffon", "lightblue", "lightcoral", "lightcyan", 
+    "lightgoldenrodyellow", "lightgray", "lightgreen", "lightgrey", 
+    "lightpink", "lightsalmon", "lightseagreen", "lightskyblue", 
+    "lightslategray", "lightslategrey", "lightsteelblue", "lightyellow", 
+    "lime", "limegreen", "linen", "magenta", "maroon", "mediumaquamarine", 
+    "mediumblue", "mediumorchid", "mediumpurple", "mediumseagreen", 
+    "mediumslateblue", "mediumspringgreen", "mediumturquoise", 
+    "mediumvioletred", "midnightblue", "mintcream", "mistyrose", 
+    "moccasin", "navajowhite", "navy", "oldlace", "olive", "olivedrab", 
+    "orange", "orangered", "orchid", "palegoldenrod", "palegreen", 
+    "paleturquoise", "palevioletred", "papayawhip", "peachpuff", "peru", 
+    "pink", "plum", "powderblue", "purple", "red", "rosybrown", 
+    "royalblue", "saddlebrown", "salmon", "sandybrown", "seagreen", 
+    "seashell", "sienna", "silver", "skyblue", "slateblue", "slategray", 
+    "slategrey", "snow", "springgreen", "steelblue", "tan", "teal", 
+    "thistle", "tomato", "turquoise", "violet", "wheat", "white", 
+    "whitesmoke", "yellow", "yellowgreen",
+    
+    /* CSS2 system colors */
+    "activeborder", "activecaption", "appworkspace", "background", 
+    "buttonface", "buttonhighlight", "buttonshadow", "buttontext", 
+    "captiontext", "graytext", "highlight", "highlighttext", 
+    "inactiveborder", "inactivecaption", "inactivecaptiontext", 
+    "infobackground", "infotext", "menu", "menutext", "scrollbar", 
+    "threeddarkshadow", "threedface", "threedhighlight", 
+    "threedlightshadow", "threedshadow", "window", "windowframe", 
+    "windowtext",
+    
+    "transparent",
+    "currentcolor", 
+    "flavor"
+  ];
+  for (var i in kwd) {
+    this._AllowedKeyword["urn:x-suika-fam-cx:css:"][kwd[i]] = true;
+  }
+};
+cx.fam.suika.y2005.CSS.Property._PropImpl_Color.inherits
+  (cx.fam.suika.y2005.CSS.Property._PropImpl);
+
+cx.fam.suika.y2005.CSS.Property._PropImpl_Color.prototype.parsePropertyValue =
+function (block, prop, propDef) {
+  var val = this._GetNextValue ();
+  if (val == null) return false;
+  var valtype = val.getCSSValueType ();
+  if (val.matchTypeURI ("tag:manakai@suika.fam.cx,2005-11:color") ||
+      val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
+    if (prop.namespaceURI == "urn:x-suika-fam-cx:css:" &&
+        prop.localName == "color" &&
+        val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
+        val.getExpandedURI () == "urn:x-suika-fam-cx:css:currentcolor") {
+      val = new cx.fam.suika.y2005.CSS.Value.IdentValue
+              ("urn:x-suika-fam-cx:css:", null, "inherit");
+    }
+    var im = this._GetPriority ();
+    if (im) {
+      var p = this._Factory.createCSSPropertyNS
+                  (prop.namespaceURI, prop.prefix, prop.localName, val);
+      p.setPriority (im);
+      block.appendPropertyNode (p);
+      return true;
+    }
+  }
+};
+
+cx.fam.suika.y2005.CSS.Property._PropImpl_Color.prototype.setSpecifiedValues =
+function (ns, pfx, ln, prop, propSet) {
+  var val = prop.getPropertyValue ();
+  if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:FUNCTION") {
+    var fns = val.getFunctionNamespaceURI ();
+    var fln = val.getFunctionLocalName ();
+    if (this._AllowedFunction[fns] && this._AllowedFunction[fns][fln]) {
+      switch (fns + fln) {
+      case "urn:x-suika-fam-cx:css:rgb":
+        var red = val.getRed ();
+        var redv = red.getValue ();
+        switch (red.getTypeURI ()) {
+        case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+          if (redv < 0 || redv > 255 || redv % 1 != 0) {
+            return;
+          }
+          break;
+        case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
+          if (redv < 0 || redv > 100) {
+            return;
+          }
+          break;
+        default: return;
+        }
+        var green = val.getRed ();
+        var greenv = green.getValue ();
+        switch (green.getTypeURI ()) {
+        case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+          if (greenv < 0 || greenv > 255 || greenv % 1 != 0) {
+            return;
+          }
+          break;
+        case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
+          if (greenv < 0 || greenv > 100) {
+            return;
+          }
+          break;
+        default: return;
+        }
+        var blue = val.getRed ();
+        var bluev = green.getValue ();
+        switch (blue.getTypeURI ()) {
+        case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+          if (bluev < 0 || bluev > 255 || bluev % 1 != 0) {
+            return;
+          }
+          break;
+        case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
+          if (bluev < 0 || bluev > 100) {
+            return;
+          }
+          break;
+        default: return;
+        }
+      case "urn:x-suika-fam-cx:css:rgba":
+        var red = val.getRed ();
+        var redv = red.getValue ();
+        switch (red.getTypeURI ()) {
+        case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+          if (redv < 0 || redv > 255 || redv % 1 != 0) {
+            return;
+          }
+          break;
+        case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
+          if (redv < 0 || redv > 100) {
+            return;
+          }
+          break;
+        default: return;
+        }
+        var green = val.getRed ();
+        var greenv = green.getValue ();
+        switch (green.getTypeURI ()) {
+        case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+          if (greenv < 0 || greenv > 255 || greenv % 1 != 0) {
+            return;
+          }
+          break;
+        case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
+          if (greenv < 0 || greenv > 100) {
+            return;
+          }
+          break;
+        default: return;
+        }
+        var blue = val.getRed ();
+        var bluev = green.getValue ();
+        switch (blue.getTypeURI ()) {
+        case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+          if (bluev < 0 || bluev > 255 || bluev % 1 != 0) {
+            return;
+          }
+          break;
+        case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
+          if (bluev < 0 || bluev > 100) {
+            return;
+          }
+          break;
+        default: return;
+        }
+        var alpha = val.getAlpha ();
+        switch (alpha.getTypeURI ()) {
+        case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+          break;
+          /* TODO: check whether the media support the alphavalue */
+        default: return;
+        }
+      case "urn:x-suika-fam-cx:css:hsl":
+        var hue = val.getHue ();
+        var saturation = val.getSaturation ();
+        var lightness = val.getLightness ();
+        switch (hue.getTypeURI ()) {
+        case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+          val = new cx.fam.suika.y2005.CSS.Value.HSLValue
+                  (new cx.fam.suika.y2005.CSS.Value.NumericValue
+                     (hue.getValue () % 360, null, null, null),
+                   saturation, lightness);
+          break;
+        default: return;
+        }
+        switch (saturation.getTypeURI ()) {
+        case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
+          var sv = saturation.getValue ();
+          if (sv < 0 || sv > 100) {
+            return;
+          }
+          break;
+        default: return;
+        }
+        switch (lightness.getTypeURI ()) {
+        case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
+          var lv = lightness.getValue ();
+          if (lv < 0 || lv > 100) {
+            return;
+          }
+          break;
+        default: return;
+        }
+        break;
+      case "urn:x-suika-fam-cx:css:hsla":
+        var hue = val.getHue ();
+        var saturation = val.getSaturation ();
+        var lightness = val.getLightness ();
+        var alpha = val.getAlpha ();
+        switch (hue.getTypeURI ()) {
+        case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+          val = new cx.fam.suika.y2005.CSS.Value.HSLAValue
+                  (new cx.fam.suika.y2005.CSS.Value.NumericValue
+                     (hue.getValue () % 360, null, null, null),
+                   saturation, lightness, alpha);
+          break;
+        default: return;
+        }
+        switch (saturation.getTypeURI ()) {
+        case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
+          var sv = saturation.getValue ();
+          if (sv < 0 || sv > 100) {
+            return;
+          }
+          break;
+        default: return;
+        }
+        switch (lightness.getTypeURI ()) {
+        case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
+          var lv = lightness.getValue ();
+          if (lv < 0 || lv > 100) {
+            return;
+          }
+          break;
+        default: return;
+        }
+        switch (alpha.getTypeURI ()) {
+        case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+          break;
+          /* TODO: check whether the media support the alphavalue */
+        default: return;
+        }
+        break;
+      } /* function */
+      propSet.setPropertyValueNS (ns, pfx, ln, val);
+    }
+  } else if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
+    var valns = val.getNamespaceURI ();
+    if (this._AllowedKeyword[valns]) {
+      if (this._AllowedKeyword[valns][val.getLocalName ()]) {
+        propSet.setPropertyValueNS (ns, pfx, ln, val);
+      }
+    }
+  } /* val */
+};
+
+cx.fam.suika.y2005.CSS.Property._PropImpl_Color.prototype.setComputedValue =
+function (ns, pfx, ln, val, propSet, parentPropSet) {
+  if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
+    var rgb = {
+      /* so-called X11 colors including HTML4 colors [SVG, CSS3 Color CR] */
+      "urn:x-suika-fam-cx:css:aliceblue":	[0xf0, 0xf8, 0xff],
+      "urn:x-suika-fam-cx:css:antiquewhite":	[0xfa, 0xeb, 0xd7],
+      "urn:x-suika-fam-cx:css:aqua":	[0x00, 0xff, 0xff],
+      "urn:x-suika-fam-cx:css:aquamarine":	[0x7f, 0xff, 0xd4],
+      "urn:x-suika-fam-cx:css:azure":	[0xf0, 0xff, 0xff],
+      "urn:x-suika-fam-cx:css:beige":	[0xf5, 0xf5, 0xdc],
+      "urn:x-suika-fam-cx:css:bisque":	[0xff, 0xe4, 0xc4],
+      "urn:x-suika-fam-cx:css:black":	[0x00, 0x00, 0x00],
+      "urn:x-suika-fam-cx:css:blanchedalmond":	[0xff, 0xeb, 0xcd],
+      "urn:x-suika-fam-cx:css:blue":	[0x00, 0x00, 0xff],
+      "urn:x-suika-fam-cx:css:blueviolet":	[0x8a, 0x2b, 0xe2],
+      "urn:x-suika-fam-cx:css:brown":	[0xa5, 0x2a, 0x2a],
+      "urn:x-suika-fam-cx:css:burlywood":	[0xde, 0xb8, 0x87],
+      "urn:x-suika-fam-cx:css:cadetblue":	[0x5f, 0x9e, 0xa0],
+      "urn:x-suika-fam-cx:css:chartreuse":	[0x7f, 0xff, 0x00],
+      "urn:x-suika-fam-cx:css:chocolate":	[0xd2, 0x69, 0x1e],
+      "urn:x-suika-fam-cx:css:coral":	[0xff, 0x7f, 0x50],
+      "urn:x-suika-fam-cx:css:cornflowerblue":	[0x64, 0x95, 0xed],
+      "urn:x-suika-fam-cx:css:cornsilk":	[0xff, 0xf8, 0xdc],
+      "urn:x-suika-fam-cx:css:crimson":	[0xdc, 0x14, 0x3c],
+      "urn:x-suika-fam-cx:css:cyan":	[0x00, 0xff, 0xff],
+      "urn:x-suika-fam-cx:css:darkblue":	[0x00, 0x00, 0x8b],
+      "urn:x-suika-fam-cx:css:darkcyan":	[0x00, 0x8b, 0x8b],
+      "urn:x-suika-fam-cx:css:darkgoldenrod":	[0xb8, 0x86, 0x0b],
+      "urn:x-suika-fam-cx:css:darkgray":	[0xa9, 0xa9, 0xa9],
+      "urn:x-suika-fam-cx:css:darkgreen":	[0x00, 0x64, 0x00],
+      "urn:x-suika-fam-cx:css:darkgrey":	[0xa9, 0xa9, 0xa9],
+      "urn:x-suika-fam-cx:css:darkkhaki":	[0xbd, 0xb7, 0x6b],
+      "urn:x-suika-fam-cx:css:darkmagenta":	[0x8b, 0x00, 0x8b],
+      "urn:x-suika-fam-cx:css:darkolivegreen":	[0x55, 0x6b, 0x2f],
+      "urn:x-suika-fam-cx:css:darkorange":	[0xff, 0x8c, 0x00],
+      "urn:x-suika-fam-cx:css:darkorchid":	[0x99, 0x32, 0xcc],
+      "urn:x-suika-fam-cx:css:darkred":	[0x8b, 0x00, 0x00],
+      "urn:x-suika-fam-cx:css:darksalmon":	[0xe9, 0x96, 0x7a],
+      "urn:x-suika-fam-cx:css:darkseagreen":	[0x8f, 0xbc, 0x8f],
+      "urn:x-suika-fam-cx:css:darkslateblue":	[0x48, 0x3d, 0x8b],
+      "urn:x-suika-fam-cx:css:darkslategray":	[0x2f, 0x4f, 0x4f],
+      "urn:x-suika-fam-cx:css:darkslategrey":	[0x2f, 0x4f, 0x4f],
+      "urn:x-suika-fam-cx:css:darkturquoise":	[0x00, 0xce, 0xd1],
+      "urn:x-suika-fam-cx:css:darkviolet":	[0x94, 0x00, 0xd3],
+      "urn:x-suika-fam-cx:css:deeppink":	[0xff, 0x14, 0x93],
+      "urn:x-suika-fam-cx:css:deepskyblue":	[0x00, 0xbf, 0xff],
+      "urn:x-suika-fam-cx:css:dimgray":	[0x69, 0x69, 0x69],
+      "urn:x-suika-fam-cx:css:dimgrey":	[0x69, 0x69, 0x69],
+      "urn:x-suika-fam-cx:css:dodgerblue":	[0x1e, 0x90, 0xff],
+      "urn:x-suika-fam-cx:css:firebrick":	[0xb2, 0x22, 0x22],
+      "urn:x-suika-fam-cx:css:floralwhite":	[0xff, 0xfa, 0xf0],
+      "urn:x-suika-fam-cx:css:forestgreen":	[0x22, 0x8b, 0x22],
+      "urn:x-suika-fam-cx:css:fuchsia":	[0xff, 0x00, 0xff],
+      "urn:x-suika-fam-cx:css:gainsboro":	[0xdc, 0xdc, 0xdc],
+      "urn:x-suika-fam-cx:css:ghostwhite":	[0xf8, 0xf8, 0xff],
+      "urn:x-suika-fam-cx:css:gold":	[0xff, 0xd7, 0x00],
+      "urn:x-suika-fam-cx:css:goldenrod":	[0xda, 0xa5, 0x20],
+      "urn:x-suika-fam-cx:css:gray":	[0x80, 0x80, 0x80],
+      "urn:x-suika-fam-cx:css:green":	[0x00, 0x80, 0x00],
+      "urn:x-suika-fam-cx:css:greenyellow":	[0xad, 0xff, 0x2f],
+      "urn:x-suika-fam-cx:css:grey":	[0x80, 0x80, 0x80],
+      "urn:x-suika-fam-cx:css:honeydew":	[0xf0, 0xff, 0xf0],
+      "urn:x-suika-fam-cx:css:hotpink":	[0xff, 0x69, 0xb4],
+      "urn:x-suika-fam-cx:css:indianred":	[0xcd, 0x5c, 0x5c],
+      "urn:x-suika-fam-cx:css:indigo":	[0x4b, 0x00, 0x82],
+      "urn:x-suika-fam-cx:css:ivory":	[0xff, 0xff, 0xf0],
+      "urn:x-suika-fam-cx:css:khaki":	[0xf0, 0xe6, 0x8c],
+      "urn:x-suika-fam-cx:css:lavender":	[0xe6, 0xe6, 0xfa],
+      "urn:x-suika-fam-cx:css:lavenderblush":	[0xff, 0xf0, 0xf5],
+      "urn:x-suika-fam-cx:css:lawngreen":	[0x7c, 0xfc, 0x00],
+      "urn:x-suika-fam-cx:css:lemonchiffon":	[0xff, 0xfa, 0xcd],
+      "urn:x-suika-fam-cx:css:lightblue":	[0xad, 0xd8, 0xe6],
+      "urn:x-suika-fam-cx:css:lightcoral":	[0xf0, 0x80, 0x80],
+      "urn:x-suika-fam-cx:css:lightcyan":	[0xe0, 0xff, 0xff],
+      "urn:x-suika-fam-cx:css:lightgoldenrodyellow":	[0xfa, 0xfa, 0xd2],
+      "urn:x-suika-fam-cx:css:lightgray":	[0xd3, 0xd3, 0xd3],
+      "urn:x-suika-fam-cx:css:lightgreen":	[0x90, 0xee, 0x90],
+      "urn:x-suika-fam-cx:css:lightgrey":	[0xd3, 0xd3, 0xd3],
+      "urn:x-suika-fam-cx:css:lightpink":	[0xff, 0xb6, 0xc1],
+      "urn:x-suika-fam-cx:css:lightsalmon":	[0xff, 0xa0, 0x7a],
+      "urn:x-suika-fam-cx:css:lightseagreen":	[0x20, 0xb2, 0xaa],
+      "urn:x-suika-fam-cx:css:lightskyblue":	[0x87, 0xce, 0xfa],
+      "urn:x-suika-fam-cx:css:lightslategray":	[0x77, 0x88, 0x99],
+      "urn:x-suika-fam-cx:css:lightslategrey":	[0x77, 0x88, 0x99],
+      "urn:x-suika-fam-cx:css:lightsteelblue":	[0xb0, 0xc4, 0xde],
+      "urn:x-suika-fam-cx:css:lightyellow":	[0xff, 0xff, 0xe0],
+      "urn:x-suika-fam-cx:css:lime":	[0x00, 0xff, 0x00],
+      "urn:x-suika-fam-cx:css:limegreen":	[0x32, 0xcd, 0x32],
+      "urn:x-suika-fam-cx:css:linen":	[0xfa, 0xf0, 0xe6],
+      "urn:x-suika-fam-cx:css:magenta":	[0xff, 0x00, 0xff],
+      "urn:x-suika-fam-cx:css:maroon":	[0x80, 0x00, 0x00],
+      "urn:x-suika-fam-cx:css:mediumaquamarine":	[0x66, 0xcd, 0xaa],
+      "urn:x-suika-fam-cx:css:mediumblue":	[0x00, 0x00, 0xcd],
+      "urn:x-suika-fam-cx:css:mediumorchid":	[0xba, 0x55, 0xd3],
+      "urn:x-suika-fam-cx:css:mediumpurple":	[0x93, 0x70, 0xdb],
+      "urn:x-suika-fam-cx:css:mediumseagreen":	[0x3c, 0xb3, 0x71],
+      "urn:x-suika-fam-cx:css:mediumslateblue":	[0x7b, 0x68, 0xee],
+      "urn:x-suika-fam-cx:css:mediumspringgreen":	[0x00, 0xfa, 0x9a],
+      "urn:x-suika-fam-cx:css:mediumturquoise":	[0x48, 0xd1, 0xcc],
+      "urn:x-suika-fam-cx:css:mediumvioletred":	[0xc7, 0x15, 0x85],
+      "urn:x-suika-fam-cx:css:midnightblue":	[0x19, 0x19, 0x70],
+      "urn:x-suika-fam-cx:css:mintcream":	[0xf5, 0xff, 0xfa],
+      "urn:x-suika-fam-cx:css:mistyrose":	[0xff, 0xe4, 0xe1],
+      "urn:x-suika-fam-cx:css:moccasin":	[0xff, 0xe4, 0xb5],
+      "urn:x-suika-fam-cx:css:navajowhite":	[0xff, 0xde, 0xad],
+      "urn:x-suika-fam-cx:css:navy":	[0x00, 0x00, 0x80],
+      "urn:x-suika-fam-cx:css:oldlace":	[0xfd, 0xf5, 0xe6],
+      "urn:x-suika-fam-cx:css:olive":	[0x80, 0x80, 0x00],
+      "urn:x-suika-fam-cx:css:olivedrab":	[0x6b, 0x8e, 0x23],
+      "urn:x-suika-fam-cx:css:orange":	[0xff, 0xa5, 0x00],
+      "urn:x-suika-fam-cx:css:orangered":	[0xff, 0x45, 0x00],
+      "urn:x-suika-fam-cx:css:orchid":	[0xda, 0x70, 0xd6],
+      "urn:x-suika-fam-cx:css:palegoldenrod":	[0xee, 0xe8, 0xaa],
+      "urn:x-suika-fam-cx:css:palegreen":	[0x98, 0xfb, 0x98],
+      "urn:x-suika-fam-cx:css:paleturquoise":	[0xaf, 0xee, 0xee],
+      "urn:x-suika-fam-cx:css:palevioletred":	[0xdb, 0x70, 0x93],
+      "urn:x-suika-fam-cx:css:papayawhip":	[0xff, 0xef, 0xd5],
+      "urn:x-suika-fam-cx:css:peachpuff":	[0xff, 0xda, 0xb9],
+      "urn:x-suika-fam-cx:css:peru":	[0xcd, 0x85, 0x3f],
+      "urn:x-suika-fam-cx:css:pink":	[0xff, 0xc0, 0xcb],
+      "urn:x-suika-fam-cx:css:plum":	[0xdd, 0xa0, 0xdd],
+      "urn:x-suika-fam-cx:css:powderblue":	[0xb0, 0xe0, 0xe6],
+      "urn:x-suika-fam-cx:css:purple":	[0x80, 0x00, 0x80],
+      "urn:x-suika-fam-cx:css:red":	[0xff, 0x00, 0x00],
+      "urn:x-suika-fam-cx:css:rosybrown":	[0xbc, 0x8f, 0x8f],
+      "urn:x-suika-fam-cx:css:royalblue":	[0x41, 0x69, 0xe1],
+      "urn:x-suika-fam-cx:css:saddlebrown":	[0x8b, 0x45, 0x13],
+      "urn:x-suika-fam-cx:css:salmon":	[0xfa, 0x80, 0x72],
+      "urn:x-suika-fam-cx:css:sandybrown":	[0xf4, 0xa4, 0x60],
+      "urn:x-suika-fam-cx:css:seagreen":	[0x2e, 0x8b, 0x57],
+      "urn:x-suika-fam-cx:css:seashell":	[0xff, 0xf5, 0xee],
+      "urn:x-suika-fam-cx:css:sienna":	[0xa0, 0x52, 0x2d],
+      "urn:x-suika-fam-cx:css:silver":	[0xc0, 0xc0, 0xc0],
+      "urn:x-suika-fam-cx:css:skyblue":	[0x87, 0xce, 0xeb],
+      "urn:x-suika-fam-cx:css:slateblue":	[0x6a, 0x5a, 0xcd],
+      "urn:x-suika-fam-cx:css:slategray":	[0x70, 0x80, 0x90],
+      "urn:x-suika-fam-cx:css:slategrey":	[0x70, 0x80, 0x90],
+      "urn:x-suika-fam-cx:css:snow":	[0xff, 0xfa, 0xfa],
+      "urn:x-suika-fam-cx:css:springgreen":	[0x00, 0xff, 0x7f],
+      "urn:x-suika-fam-cx:css:steelblue":	[0x46, 0x82, 0xb4],
+      "urn:x-suika-fam-cx:css:tan":	[0xd2, 0xb4, 0x8c],
+      "urn:x-suika-fam-cx:css:teal":	[0x00, 0x80, 0x80],
+      "urn:x-suika-fam-cx:css:thistle":	[0xd8, 0xbf, 0xd8],
+      "urn:x-suika-fam-cx:css:tomato":	[0xff, 0x63, 0x47],
+      "urn:x-suika-fam-cx:css:turquoise":	[0x40, 0xe0, 0xd0],
+      "urn:x-suika-fam-cx:css:violet":	[0xee, 0x82, 0xee],
+      "urn:x-suika-fam-cx:css:wheat":	[0xf5, 0xde, 0xb3],
+      "urn:x-suika-fam-cx:css:white":	[0xff, 0xff, 0xff],
+      "urn:x-suika-fam-cx:css:whitesmoke":	[0xf5, 0xf5, 0xf5],
+      "urn:x-suika-fam-cx:css:yellow":	[0xff, 0xff, 0x00],
+      "urn:x-suika-fam-cx:css:yellowgreen":	[0x9a, 0xcd, 0x32],
+      
+      "urn:x-suika-fam-cx:css:transparent":	[0, 0, 0, 0]
+    }[val.getExpandedURI ()];
+    if (rgb) {
+      if (rgb.length == 3) {
+        propSet.setPropertyValueNS
+          (ns, pfx, ln,
+           new cx.fam.suika.y2005.CSS.Value.RGBValue
+             (new cx.fam.suika.y2005.CSS.Value.NumericValue (rgb[0], null, null, null),
+              new cx.fam.suika.y2005.CSS.Value.NumericValue (rgb[1], null, null, null),
+              new cx.fam.suika.y2005.CSS.Value.NumericValue (rgb[2], null, null, null)));
+      } else if (rgb.length == 4) {
+        propSet.setPropertyValueNS
+          (ns, pfx, ln,
+           new cx.fam.suika.y2005.CSS.Value.RGBAValue
+             (new cx.fam.suika.y2005.CSS.Value.NumericValue (rgb[0], null, null, null),
+              new cx.fam.suika.y2005.CSS.Value.NumericValue (rgb[1], null, null, null),
+              new cx.fam.suika.y2005.CSS.Value.NumericValue (rgb[2], null, null, null),
+              new cx.fam.suika.y2005.CSS.Value.NumericValue (rgb[3], null, null, null)));
+      }
+    } else if (val.getExpandedURI () == "urn:x-suika-fam-cx:css:currentcolor") {
+      var colorVal = this.getSpecifiedPropertyValueNS
+                       ("urn:x-suika-fam-cx:css:", "color");
+      propSet.setPropertyValueNS (ns, pfx, ln, colorVal);
+    }
+  } else if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:FUNCTION") {
+    /*
+       Although CSS3 color CR defines computed value for |hsl| and |hsla|
+       as same as specified value, this implementation converts them
+       into |rgb| or |rgba| for convinience.
+    */
+    var hue2rgb = function (m1, m2, h) {
+      h = h < 0 ? h + 1 : h > 1 ? h - 1 : h;
+      if (h * 6 < 1) {
+        return m1 + (m2 - m1) * h * 6;
+      } else if (h * 2 < 1) {
+        return m2;
+      } else if (h * 3 < 2) {
+        return m1 + (m2 - m1) * (2/3 - h) * 6;
+      } else {
+        return m1;
+      }
+    };
+    switch (val.getFunctionExpandedURI ()) {
+    case "urn:x-suika-fam-cx:css:rgba":
+      var alpha = val.getAlpha ();
+      var alphav = alpha.getValue ();
+      if (alphav < 0) {
+        propSet.setPropertyValueNS
+          (ns, pfx, ln, 
+           new cx.fam.suika.y2005.CSS.Value.RGBAValue
+             (val.getRed (), val.getGreen (), val.getBlue (), 
+              new cx.fam.suika.y2005.CSS.Value.NumericValue
+                (0, null, null, null)));
+      } else if (alphav > 1) {
+        propSet.setPropertyValueNS
+          (ns, pfx, ln, 
+           new cx.fam.suika.y2005.CSS.Value.RGBAValue
+             (val.getRed (), val.getGreen (), val.getBlue (), 
+              new cx.fam.suika.y2005.CSS.Value.NumericValue
+                (1, null, null, null)));
+      }
+      break;
+    case "urn:x-suika-fam-cx:css:hsl":
+      var h = val.getHue ().getValue () / 360;
+      var s = val.getSaturation ().getValue () * 0.01;
+      var l = val.getLightness ().getValue () * 0.01;
+      var m2 = l <= 0.5 ? l * (s + 1) : l + s - l * s;
+      var m1 = l * 2 - m2;
+      propSet.setPropertyValueNS
+          (ns, pfx, ln,
+           new cx.fam.suika.y2005.CSS.Value.RGBValue
+             (new cx.fam.suika.y2005.CSS.Value.NumericValue
+                (Math.floor (hue2rgb (m1, m2, h + 1/3) * 255), null, null, null),
+              new cx.fam.suika.y2005.CSS.Value.NumericValue
+                (Math.floor (hue2rgb (m1, m2, h      ) * 255), null, null, null),
+              new cx.fam.suika.y2005.CSS.Value.NumericValue
+                (Math.floor (hue2rgb (m1, m2, h - 1/3) * 255), null, null, null)));
+      break;
+    case "urn:x-suika-fam-cx:css:hsla":
+      var h = val.getHue ().getValue ();
+      var s = val.getSaturation ().getValue () * 0.01;
+      var l = val.getLightness ().getValue () * 0.01;
+      var m2 = l <= 0.5 ? l * (s + 1) : l + s - l * s;
+      var m1 = l * 2 - m2;
+      var alpha = val.getAlpha ();
+      var alphav = alpha.getValue ();
+      if (alphav < 0) {
+        alpha = new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null);
+      } else if (alphav > 1) {
+        alpha = new cx.fam.suika.y2005.CSS.Value.NumericValue (1, null, null, null);
+      }
+      propSet.setPropertyValueNS
+          (ns, pfx, ln,
+           new cx.fam.suika.y2005.CSS.Value.RGBAValue
+             (new cx.fam.suika.y2005.CSS.Value.NumericValue
+                (Math.floor (hue2rgb (m1, m2, h + 1/3) * 255), null, null, null),
+              new cx.fam.suika.y2005.CSS.Value.NumericValue
+                (Math.floor (hue2rgb (m1, m2, h      ) * 255), null, null, null),
+              new cx.fam.suika.y2005.CSS.Value.NumericValue
+                (Math.floor (hue2rgb (m1, m2, h - 1/3) * 255), null, null, null),
+              alpha));
+      break;
     }
   }
 };
@@ -787,13 +1323,6 @@ function (ns, pfx, ln, prop, propSet) {
 
 cx.fam.suika.y2005.CSS.Property._Prop = {};
 cx.fam.suika.y2005.CSS.Property._Prop["urn:x-suika-fam-cx:css:"] = {
-  clear: new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["both", "left", "none", "right"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "none")
-  }),
   "bottom": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
     allowedKeyword: [
       "urn:x-suika-fam-cx:css:", ["auto"]
@@ -802,9 +1331,24 @@ cx.fam.suika.y2005.CSS.Property._Prop["urn:x-suika-fam-cx:css:"] = {
     initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
                    ("urn:x-suika-fam-cx:css:", null, "auto")
   }),
+  clear: new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
+    allowedKeyword: [
+      "urn:x-suika-fam-cx:css:", ["both", "left", "none", "right"]
+    ],
+    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                   ("urn:x-suika-fam-cx:css:", null, "none")
+  }),
+  color: new cx.fam.suika.y2005.CSS.Property._PropImpl_Color ({
+    /* Introduced in CSS1, modified in CSS2, CSS2.1, SVG1, CSS3 Color CR */
+    /* TODO: |attr| */
+    inherit: true,
+    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                   ("http://suika.fam.cx/~wakaba/archive/2005/cssc.",
+                    "manakai_c", "user-agent-dependent")
+  }),
   direction: new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
     allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["ltr"]
+      "urn:x-suika-fam-cx:css:", ["ltr", "rtl"]
     ],
     initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
                    ("urn:x-suika-fam-cx:css:", null, "ltr")
@@ -812,9 +1356,7 @@ cx.fam.suika.y2005.CSS.Property._Prop["urn:x-suika-fam-cx:css:"] = {
   display: new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
     setSpecifiedValues: function (ns, pfx, ln, prop, propSet) {
       var val = prop.getPropertyValue ();
-      var valtype = val.getCSSValueType ();
-      if (valtype == val.CSS_PRIMITIVE_VALUE &&
-          val.getPrimitiveType () == val.CSS_IDENT) {
+      if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
         var valln = val.getLocalName ();
         switch (val.getNamespaceURI () + valln) {
         case "urn:x-suika-fam-cx:css:none":
@@ -829,10 +1371,10 @@ cx.fam.suika.y2005.CSS.Property._Prop["urn:x-suika-fam-cx:css:"] = {
         case "urn:x-suika-fam-cx:css:table-column":
         case "urn:x-suika-fam-cx:css:table-column-group":
         case "urn:x-suika-fam-cx:css:table-row":
-        case "http://suika.fam.cx/~wakaba/archive/2005/11/css.ruby-base":
-        case "http://suika.fam.cx/~wakaba/archive/2005/11/css.ruby-text":
-        case "http://suika.fam.cx/~wakaba/archive/2005/11/css.ruby-base-group":
-        case "http://suika.fam.cx/~wakaba/archive/2005/11/css.ruby-text-group":
+        case "urn:x-suika-fam-cx:css:ruby-base":
+        case "urn:x-suika-fam-cx:css:ruby-text":
+        case "urn:x-suika-fam-cx:css:ruby-base-group":
+        case "urn:x-suika-fam-cx:css:ruby-text-group":
           propSet.setPropertyValueNS
             ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
              "manakai", "display-role",
@@ -897,7 +1439,7 @@ cx.fam.suika.y2005.CSS.Property._Prop["urn:x-suika-fam-cx:css:"] = {
              new cx.fam.suika.y2005.CSS.Value.IdentValue
                    ("urn:x-suika-fam-cx:css:", null, "table"));
           break;
-        case "http://suika.fam.cx/~wakaba/archive/2005/11/css.ruby":
+        case "urn:x-suika-fam-cx:css:ruby":
           propSet.setPropertyValueNS
             ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
              "manakai", "display-role",
@@ -907,24 +1449,22 @@ cx.fam.suika.y2005.CSS.Property._Prop["urn:x-suika-fam-cx:css:"] = {
             ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
              "manakai", "display-model",
              new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
-                    "manakai", "ruby"));
+                   ("urn:x-suika-fam-cx:css:", null, "ruby"));
           break;
-        }
-      } else if (valtype == val.CSS_INHERIT ||
-                 valtype == val.CSS_CASCADING_VALUE) {
-        var valns = val.getNamespaceURI ();
-        if (this._AllowedKeyword[valns]) {
-          if (this._AllowedKeyword[valns][val.getLocalName ()]) {
-            propSet.setPropertyValueNS
-              ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
-               "manakai", "display-role", val);
-            propSet.setPropertyValueNS
-              ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
-               "manakai", "display-model", val);
+        default:
+          var valns = val.getNamespaceURI ();
+          if (this._AllowedKeyword[valns]) {
+            if (this._AllowedKeyword[valns][valln]) {
+              propSet.setPropertyValueNS
+                ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
+                 "manakai", "display-role", val);
+              propSet.setPropertyValueNS
+                ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
+                 "manakai", "display-model", val);
+            }
           }
         }
-      }
+      } /* typeURI */
     }
   }),
   "float": new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
@@ -987,12 +1527,58 @@ cx.fam.suika.y2005.CSS.Property._Prop["urn:x-suika-fam-cx:css:"] = {
     initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
                    ("urn:x-suika-fam-cx:css:", null, "auto")
   }),
+  opacity: new cx.fam.suika.y2005.CSS.Property._PropImpl ({
+    /* Introduced in SVG1, also defined in CSS3 color CR */
+    /* Gecko's deprecated equivalent, |-moz-opacity|, had trouble
+       in its implementation so that not identical to this property. */
+    parsePropertyValue: function (block, prop) {
+      var val = this._GetNextValue ();
+      if (val == null) return false;
+      if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:NUMBER" ||
+          val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
+        var im = this._GetPriority ();
+        if (im) {
+          var p = this._Factory.createCSSPropertyNS
+                      (prop.namespaceURI, prop.prefix, prop.localName, val);
+          p.setPriority (im);
+          block.appendPropertyNode (p);
+          return true;
+        }
+      } /* val */
+    },
+    setComputedValue: function (ns, pfx, ln, val, propSet, parentPropSet) {
+      var val = val.getValue ();
+      if (val < 0) {
+        propSet.setPropertyValueNS
+          (ns, pfx, ln,
+           new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null));
+      } else if (val > 1) {
+        propSet.setPropertyValueNS
+          (ns, pfx, ln,
+           new cx.fam.suika.y2005.CSS.Value.NumericValue (1, null, null, null));
+      }
+    },
+    setSpecifiedValues: function (ns, pfx, ln, prop, propSet) {
+      var val = prop.getPropertyValue ();
+      if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:NUMBER") {
+        propSet.setPropertyValueNS
+                ("urn:x-suika-fam-cx:css:", null, "opacity", val);
+      } else if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
+        var valns = val.getNamespaceURI ();
+        if (this._AllowedKeyword[valns]) {
+          if (this._AllowedKeyword[valns][valln]) {
+            propSet.setPropertyValueNS
+                ("urn:x-suika-fam-cx:css:", null, "opacity", val);
+          }
+        }
+      }
+    },
+    initial: new cx.fam.suika.y2005.CSS.Value.NumericValue (1, null, null, null)
+  }),
   overflow: new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
     setSpecifiedValues: function (ns, pfx, ln, prop, propSet) {
       var val = prop.getPropertyValue ();
-      var valtype = val.getCSSValueType ();
-      if (valtype == val.CSS_PRIMITIVE_VALUE &&
-          val.getPrimitiveType () == val.CSS_IDENT) {
+      if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
         var valln = val.getLocalName ();
         switch (val.getNamespaceURI () + valln) {
         case "urn:x-suika-fam-cx:css:auto":
@@ -1052,16 +1638,15 @@ cx.fam.suika.y2005.CSS.Property._Prop["urn:x-suika-fam-cx:css:"] = {
                    ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
                     "manakai", "scrollbar"));
           break;
-        }
-      } else if (valtype == val.CSS_INHERIT ||
-                 valtype == val.CSS_CASCADING_VALUE) {
-        var valns = val.getNamespaceURI ();
-        if (this._AllowedKeyword[valns]) {
-          if (this._AllowedKeyword[valns][val.getLocalName ()]) {
-            propSet.setPropertyValueNS
-              ("urn:x-suika-fam-cx:css:", null, "overflow-x", val);
-            propSet.setPropertyValueNS
-              ("urn:x-suika-fam-cx:css:", null, "overflow-y", val);
+        default:
+          var valns = val.getNamespaceURI ();
+          if (this._AllowedKeyword[valns]) {
+            if (this._AllowedKeyword[valns][valln]) {
+              propSet.setPropertyValueNS
+                ("urn:x-suika-fam-cx:css:", null, "overflow-x", val);
+              propSet.setPropertyValueNS
+                ("urn:x-suika-fam-cx:css:", null, "overflow-y", val);
+            }
           }
         }
       }
@@ -1136,13 +1721,11 @@ cx.fam.suika.y2005.CSS.Property._Prop["urn:x-suika-fam-cx:css:"] = {
       case "urn:x-suika-fam-cx:css:relative":
         var leftVal = propSet.getSpecifiedPropertyValueNS
                         ("urn:x-suika-fam-cx:css:", "left");
-        if (leftVal.getCSSValueType () == leftVal.CSS_PRIMITIVE_VALUE &&
-            leftVal.getPrimitiveType () == leftVal.CSS_IDENT &&
+        if (leftVal.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
             leftVal.getExpandedURI () == "urn:x-suika-fam-cx:css:auto") {
           var rightVal = propSet.getSpecifiedPropertyValueNS
                            ("urn:x-suika-fam-cx:css:", "right");
-          if (rightVal.getCSSValueType () == rightVal.CSS_PRIMITIVE_VALUE &&
-              rightVal.getPrimitiveType () == rightVal.CSS_IDENT &&
+          if (rightVal.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
               rightVal.getExpandedURI () == "urn:x-suika-fam-cx:css:auto") {
             /* left:auto; right:auto */
             propSet.setPropertyValueNS
@@ -1164,8 +1747,7 @@ cx.fam.suika.y2005.CSS.Property._Prop["urn:x-suika-fam-cx:css:"] = {
         } else {
           var rightVal = propSet.getSpecifiedPropertyValueNS
                            ("urn:x-suika-fam-cx:css:", "right");
-          if (rightVal.getCSSValueType () == rightVal.CSS_PRIMITIVE_VALUE &&
-              rightVal.getPrimitiveType () == rightVal.CSS_IDENT &&
+          if (rightVal.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
               rightVal.getExpandedURI () == "urn:x-suika-fam-cx:css:auto") {
             /* left:~auto; right:auto */
             propSet.setPropertyValueNS
@@ -1201,13 +1783,11 @@ cx.fam.suika.y2005.CSS.Property._Prop["urn:x-suika-fam-cx:css:"] = {
         
         var topVal = propSet.getSpecifiedPropertyValueNS
                         ("urn:x-suika-fam-cx:css:", "top");
-        if (topVal.getCSSValueType () == topVal.CSS_PRIMITIVE_VALUE &&
-            topVal.getPrimitiveType () == topVal.CSS_IDENT &&
+        if (topVal.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
             topVal.getExpandedURI () == "urn:x-suika-fam-cx:css:auto") {
           var bottomVal = propSet.getSpecifiedPropertyValueNS
                            ("urn:x-suika-fam-cx:css:", "bottom");
-          if (bottomVal.getCSSValueType () == bottomVal.CSS_PRIMITIVE_VALUE &&
-              bottomVal.getPrimitiveType () == bottomVal.CSS_IDENT &&
+          if (bottomVal.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
               bottomVal.getExpandedURI () == "urn:x-suika-fam-cx:css:auto") {
             /* top:auto; bottom:auto */
             propSet.setPropertyValueNS
@@ -1229,8 +1809,7 @@ cx.fam.suika.y2005.CSS.Property._Prop["urn:x-suika-fam-cx:css:"] = {
         } else {
           var bottomVal = propSet.getSpecifiedPropertyValueNS
                            ("urn:x-suika-fam-cx:css:", "bottom");
-          if (bottomVal.getCSSValueType () == bottomVal.CSS_PRIMITIVE_VALUE &&
-              bottomVal.getPrimitiveType () == bottomVal.CSS_IDENT &&
+          if (bottomVal.getTypeURI == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
               bottomVal.getExpandedURI () == "urn:x-suika-fam-cx:css:auto") {
             /* top:~auto; bottom:auto */
             propSet.setPropertyValueNS
@@ -1340,7 +1919,7 @@ cx.fam.suika.y2005.CSS.Property._Prop
 };
 cx.fam.suika.y2005.CSS.Property._Prop
 ["http://suika.fam.cx/~wakaba/archive/2005/11/css.props."] = {
-  "display": {
+  "display": new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
     parsePropertyValue: function () { return false },
     setComputedValue: function (ns, _1, ln, _2, propSet, parentPropSet) {
       var display = propSet.getSpecifiedPropertyValueNS
@@ -1431,10 +2010,10 @@ cx.fam.suika.y2005.CSS.Property._Prop
         }
       }
     }
-  }
+  })
 };
 
-/* Revision: $Date: 2005/11/05 12:04:34 $ */
+/* Revision: $Date: 2005/11/06 14:24:23 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

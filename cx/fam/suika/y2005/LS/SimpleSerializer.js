@@ -28,7 +28,7 @@ cx.fam.suika.y2005.LS.SimpleSerializer.prototype.writeToString = function (nodeA
       rootElement.getNodeName () == 'HTML') {
     isHTMLDocument = true;
   }
-  var srcs = new Array (nodeArg);
+  var srcs = [nodeArg];
   var nsbind = [{xml: 'http://www.w3.org/XML/1998/namespace',
                  xmlns: 'http://suika.fam.cx/~wakaba/-temp/2003/09/27/undef'}];
   nsbind[0][''] = '';
@@ -282,7 +282,7 @@ cx.fam.suika.y2005.LS.SimpleSerializer.prototype.writeToString = function (nodeA
           srcs.unshift (csrc[i]);
         }
         csrc = [];
-      } else if (nt == src.TEXT_NODE) {;
+      } else if (nt == src.TEXT_NODE) {
         r += xescape (src.getData ());
       } else if (nt == src.CDATA_SECTION_NODE) {
         r += '<![CDATA[' + src.getData ().replace (/]]>/g, ']]]]>&gt;<![CDATA[') +
@@ -335,7 +335,7 @@ cx.fam.suika.y2005.LS.SimpleSerializer.prototype._UseEmptyElemTag
   wbr: true
 };
 
-/* Revision: $Date: 2005/10/29 10:48:20 $ */
+/* Revision: $Date: 2005/11/06 14:24:23 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

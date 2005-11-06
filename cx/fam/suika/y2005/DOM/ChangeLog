@@ -1,3 +1,15 @@
+2005-11-06  Wakaba  <w@suika.fam.cx>
+
+	* CleanNode.js: New module.
+	
+	* Implementation.js (DOMImplementation constructor): |impl| parameter
+	is now optional.
+	
+	* Node.js (hasAttribute): Defautls |false| rather than |null|.
+	(innerHTML, outerHTML): Requests to load LS module after |ownerDocument|
+	attribute getter call to ensure the implementation module is loaded.
+	(previousSiblingElement): Renamed from |previousElement|.
+
 2005-11-05  Wakaba  <w@suika.fam.cx>
 
 	* HTML.js (getSHTMLElement): Use specialized class for

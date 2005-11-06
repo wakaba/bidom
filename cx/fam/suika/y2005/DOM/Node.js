@@ -207,16 +207,16 @@ cx.fam.suika.y2005.DOM.Node.Node.prototype.getFirstChild = function () {
   return cx.fam.suika.y2005.DOM.Node.getDOMNode (this._Node.firstChild);
 };
 cx.fam.suika.y2005.DOM.Node.Node.prototype.hasAttributes = function () {
-  return null;
+  return false;
 };
 cx.fam.suika.y2005.DOM.Node.Node.prototype.hasChildNodes = function () {
   return this._Node.hasChildNodes ();
 };
 /** Marked content [non-standard] */
 cx.fam.suika.y2005.DOM.Node.Node.prototype.getInnerHTML = function () {
+  var impl = this.getOwnerDocument ().getImplementation ();
   cx.fam.suika.y2005.DOM.Implementation.requireDOMImplementationFeature
     ("http://suika.fam.cx/~wakaba/archive/2004/dom/ls#generic.", "3.0");
-  var impl = this.getOwnerDocument ().getImplementation ();
   var se = impl.createGLSSerializer
     ("http://suika.fam.cx/~wakaba/archive/2004/dom/ls#SerializeDocumentInstance");
   var r = "";
@@ -317,9 +317,9 @@ cx.fam.suika.y2005.DOM.Node.Node.prototype.getNodeType = function () {
 };
 /** Marked content with markup of the node itself [non-standard] */
 cx.fam.suika.y2005.DOM.Node.Node.prototype.getOuterHTML = function () {
+  var impl = this.getOwnerDocument ().getImplementation ();
   cx.fam.suika.y2005.DOM.Implementation.requireDOMImplementationFeature
     ("http://suika.fam.cx/~wakaba/archive/2004/dom/ls#generic.", "3.0");
-  var impl = this.getOwnerDocument ().getImplementation ();
   var se = impl.createGLSSerializer
     ("http://suika.fam.cx/~wakaba/archive/2004/dom/ls#SerializeDocumentInstance");
   return se.writeToString (this);
@@ -362,7 +362,7 @@ cx.fam.suika.y2005.DOM.Node.Node.prototype.getPreviousSibling = function () {
    of the node.
    [non-standard]
 */
-cx.fam.suika.y2005.DOM.Node.Node.prototype.getPreviousElement = function () {
+cx.fam.suika.y2005.DOM.Node.Node.prototype.getPreviousSiblingElement = function () {
   /* TODO: |EntityReference| support */
   var el = this.getPreviousSibling ();
   while (el != null) {
@@ -603,9 +603,9 @@ cx.fam.suika.y2005.DOM.Node.Document.prototype.getImplementation = function () {
 };
 /** Marked content [non-standard] */
 cx.fam.suika.y2005.DOM.Node.Document.prototype.getInnerHTML = function () {
+  var impl = this.getImplementation ();
   cx.fam.suika.y2005.DOM.Implementation.requireDOMImplementationFeature
     ("http://suika.fam.cx/~wakaba/archive/2004/dom/ls#generic.", "3.0");
-  var impl = this.getImplementation ();
   var se = impl.createGLSSerializer
     ("http://suika.fam.cx/~wakaba/archive/2004/dom/ls#SerializeDocumentInstance");
   var r = "";
@@ -618,9 +618,9 @@ cx.fam.suika.y2005.DOM.Node.Document.prototype.getInnerHTML = function () {
 };
 /** Marked content with optional XML declaration [non-standard] */
 cx.fam.suika.y2005.DOM.Node.Document.prototype.getOuterHTML = function () {
+  var impl = this.getImplementation ();
   cx.fam.suika.y2005.DOM.Implementation.requireDOMImplementationFeature
     ("http://suika.fam.cx/~wakaba/archive/2004/dom/ls#generic.", "3.0");
-  var impl = this.getImplementation ();
   var se = impl.createGLSSerializer
     ("http://suika.fam.cx/~wakaba/archive/2004/dom/ls#SerializeDocumentInstance");
   return se.writeToString (this);
@@ -852,7 +852,7 @@ cx.fam.suika.y2005.DOM.Node.Element.prototype.getIds = function () {
   for (var i = 0; i < asl; i++) {
     var a = as.item (i);
     if (a.isId ()) {
-      var v = attrs.textContent.split (/\s+/);
+      var v = attrs.getTextContent ().split (/\s+/);
       for (var j in v) {
         vals.push (v[j]);
       }
@@ -1625,6 +1625,8 @@ function (node) {
   if (this.attr[ns] == null) this[ns] = [];
   this.attr[ns][node.getLocalName ()] = node;
 };
+
+/* $Date: 2005/11/06 14:24:23 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.
