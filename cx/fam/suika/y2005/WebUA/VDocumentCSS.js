@@ -85,6 +85,7 @@ function (newDocument, uaStyleSheetList, userStyleSheetList) {
         var elbox = el.parentBox.appendNewCSSBlockBox (computed);
         break;
       case "urn:x-suika-fam-cx:css:inline":
+      default:
         var elbox = el.parentBox.appendNewCSSInlineBox (computed);
         break;
       }
@@ -141,6 +142,10 @@ function (computedStyle) {
   }
   
   var copyProps = [
+    ["urn:x-suika-fam-cx:css:", "border-bottom-style", "borderBottomStyle"],
+    ["urn:x-suika-fam-cx:css:", "border-left-style", "borderLeftStyle"],
+    ["urn:x-suika-fam-cx:css:", "border-right-style", "borderRightStyle"],
+    ["urn:x-suika-fam-cx:css:", "border-top-style", "borderTopStyle"],
     ["urn:x-suika-fam-cx:css:", "position", "position"],
     ["urn:x-suika-fam-cx:css:", "visibility", "visibility"]
   ];
@@ -160,6 +165,18 @@ function (computedStyle) {
     ["urn:x-suika-fam-cx:css:", "left", "left"],
     ["urn:x-suika-fam-cx:css:", "right", "right"],
     ["urn:x-suika-fam-cx:css:", "bottom", "bottom"],
+    ["urn:x-suika-fam-cx:css:", "border-bottom-width", "borderBottomWidth"],
+    ["urn:x-suika-fam-cx:css:", "border-left-width", "borderLeftWidth"],
+    ["urn:x-suika-fam-cx:css:", "border-right-width", "borderRightWidth"],
+    ["urn:x-suika-fam-cx:css:", "border-top-width", "borderTopWidth"],
+    ["urn:x-suika-fam-cx:css:", "padding-bottom", "paddingBottom"],
+    ["urn:x-suika-fam-cx:css:", "padding-left", "paddingLeft"],
+    ["urn:x-suika-fam-cx:css:", "padding-right", "paddingRight"],
+    ["urn:x-suika-fam-cx:css:", "padding-top", "paddingTop"],
+    ["urn:x-suika-fam-cx:css:", "margin-bottom", "marginBottom"],
+    ["urn:x-suika-fam-cx:css:", "margin-left", "marginLeft"],
+    ["urn:x-suika-fam-cx:css:", "margin-right", "marginRight"],
+    ["urn:x-suika-fam-cx:css:", "margin-top", "marginTop"],
     ["urn:x-suika-fam-cx:css:", "line-height", "lineHeight"],
     ["urn:x-suika-fam-cx:css:", "vertical-align", "verticalAlign"]
   ];
@@ -214,6 +231,10 @@ function (computedStyle) {
   var copyProps = [
     ["urn:x-suika-fam-cx:css:", "float", "cssFloat"],
     ["urn:x-suika-fam-cx:css:", "color", "color"],
+    ["urn:x-suika-fam-cx:css:", "border-bottom-color", "borderBottomColor"],
+    ["urn:x-suika-fam-cx:css:", "border-left-color", "borderLeftColor"],
+    ["urn:x-suika-fam-cx:css:", "border-right-color", "borderRightColor"],
+    ["urn:x-suika-fam-cx:css:", "border-top-color", "borderTopColor"],
     ["urn:x-suika-fam-cx:css:", "opacity", "opacity"]
   ];
   for (var i in copyProps) {
@@ -239,6 +260,10 @@ function (computedStyle) {
   
   /* color properties */
   copyProps = [
+    ["urn:x-suika-fam-cx:css:", "border-bottom-color", "borderBottomColor"],
+    ["urn:x-suika-fam-cx:css:", "border-left-color", "borderLeftColor"],
+    ["urn:x-suika-fam-cx:css:", "border-right-color", "borderRightColor"],
+    ["urn:x-suika-fam-cx:css:", "border-top-color", "borderTopColor"],
     ["urn:x-suika-fam-cx:css:", "color", "color"]
       /* TODO: |flavor| system color introduced in CSS3 */
   ];
@@ -278,6 +303,10 @@ function (computedStyle) {
   
   /* color properties */
   copyProps = [
+    ["urn:x-suika-fam-cx:css:", "border-bottom-color", "borderBottomColor"],
+    ["urn:x-suika-fam-cx:css:", "border-left-color", "borderLeftColor"],
+    ["urn:x-suika-fam-cx:css:", "border-right-color", "borderRightColor"],
+    ["urn:x-suika-fam-cx:css:", "border-top-color", "borderTopColor"],
     ["urn:x-suika-fam-cx:css:", "color", "color"]
       /* TODO: |flavor| system color introduced in CSS3 */
   ];
@@ -321,6 +350,10 @@ function (computedStyle) {
   
   /* color properties */
   copyProps = [
+    ["urn:x-suika-fam-cx:css:", "border-bottom-color", "borderBottomColor"],
+    ["urn:x-suika-fam-cx:css:", "border-left-color", "borderLeftColor"],
+    ["urn:x-suika-fam-cx:css:", "border-right-color", "borderRightColor"],
+    ["urn:x-suika-fam-cx:css:", "border-top-color", "borderTopColor"],
     ["urn:x-suika-fam-cx:css:", "color", "color"]
       /* TODO: |flavor| system color introduced in CSS3 */
   ];
@@ -425,7 +458,7 @@ cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSInlineElement = function () {
 cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSInlineElement.inherits
   (cx.fam.suika.y2005.WebUA.VDocumentCSS.CSSBoxElement);
 
-/* Revision: $Date: 2005/11/06 14:24:23 $ */
+/* Revision: $Date: 2005/11/07 10:47:00 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

@@ -298,7 +298,7 @@ function (parentNode) {
       }
       token = this._PopToken (false);
     }
-    if (token.type == ";") {
+    if (token && token.type == ";") {
       token = this._PopToken (false);
       continue D;
     }
@@ -1589,7 +1589,7 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._PopChar = function () {
   return ch;
 };
 
-/* Revision: $Date: 2005/11/06 14:24:23 $ */
+/* Revision: $Date: 2005/11/07 10:47:00 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

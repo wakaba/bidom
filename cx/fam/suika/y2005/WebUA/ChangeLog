@@ -1,3 +1,11 @@
+2005-11-07  Wakaba  <w@suika.fam.cx>
+
+	* VDocumentCSS.js: Creates inline box when |display| is non-supported
+	value.  Support for |border-*-style|, |border-*-width|,
+	|border-*-color|, |margin-*| and |padding-*| added.
+	
+	* XMLHttpRequest.js: New module.
+
 2005-11-06  Wakaba  <w@suika.fam.cx>
 
 	* VDocumentCSS.js (_SetComputedStyle): Split function by rendering

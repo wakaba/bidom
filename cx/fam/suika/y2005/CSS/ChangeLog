@@ -1,3 +1,24 @@
+2005-11-07  Wakaba  <w@suika.fam.cx>
+
+	* Property.js: Support for |padding-left|, |padding-top|, |padding-bottom|,
+	|padding-right|, |margin-left|, |margin-right|, |margin-top|,
+	|margin-bottom|, |border-style-top|, |border-style-bottom|,
+	|border-style-right|, |border-style-left|, |border-color-left|,
+	|border-color-top|, |border-color-bottom|, |border-color-right|,
+	|border-width-top|, |border-width-bottom|, |border-width-left|,
+	|border-width-right|, |border-width|, |border-color|, |border-style|,
+	|margin|, and |padding| added.  (Most are buggy and not work.)
+	(_PropImpl_Color._GetSpecifiedValue): Split from |setSpecifiedValue|.
+	Missing |break|s inserted.
+	
+	* SimpleParser.js (_ParsePriority): Don't error when end
+	of token before |;|.
+	
+	* Value.js (matchTypeURI): Type URI
+	<tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage> added.
+	(addItem): New method.
+	(ValueList.getCSSText): Implemented.
+
 2005-11-06  Wakaba  <w@suika.fam.cx>
 
 	* Property.js: Support for |color| and |opacity| properties added.

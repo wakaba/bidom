@@ -276,11 +276,13 @@ cx.fam.suika.y2005.CSS.Value.Value.prototype.CSS_CUSTOM          = 3;
     - <tag:manakai@suika.fam.cx,2005-11:absolute-length>
     - <tag:manakai@suika.fam.cx,2005-11:absolute-length-or-px>
     - <tag:manakai@suika.fam.cx,2005-11:length-or-percentage>
+    - <tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage>
     - <tag:manakai@suika.fam.cx,2005-11:angle>
     - <tag:manakai@suika.fam.cx,2005-11:time>
     - <tag:manakai@suika.fam.cx,2005-11:frequency>
     - <tag:manakai@suika.fam.cx,2005-11:string>
     - <tag:manakai@suika.fam.cx,2005-11:color>
+          Note.  This URI does not match to <color> keywords.
     - <tag:manakai@suika.fam.cx,2005-11:inheritance>
   ... as well as URIs used in |typeURI| attribute.
 */
@@ -435,6 +437,8 @@ function (typeURI) {
       case "tag:manakai@suika.fam.cx,2005-11:relative-length":
       case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
         return true;
+      case "tag:manakai@suika.fam.cx,2005-11:length-or-percentage":
+        return (this.value >= 0);
       default:
         return false;
       }
@@ -446,6 +450,8 @@ function (typeURI) {
       case "tag:manakai@suika.fam.cx,2005-11:absolute-length-or-percentage":
       case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
         return true;
+      case "tag:manakai@suika.fam.cx,2005-11:length-or-percentage":
+        return (this.value >= 0);
       default:
         return false;
       }
@@ -461,6 +467,8 @@ function (typeURI) {
       case "tag:manakai@suika.fam.cx,2005-11:absolute-length-or-percentage":
       case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
         return true;
+      case "tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage":
+        return (this.value >= 0);
       default:
         return false;
       }
@@ -507,6 +515,8 @@ function (typeURI) {
     case "tag:manakai@suika.fam.cx,2005-11:percentage":
     case "tag:manakai@suika.fam.cx,2005-11:length-or-percentage":
       return true;
+    case "tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage":
+      return (this.value >= 0);
     default:
       return false;
     }
@@ -525,6 +535,7 @@ function (typeURI) {
     case "tag:manakai@suika.fam.cx,2005-11:non-negative-integer":
       return (this.value % 1 == 0 && this.value >= 0);
     case "tag:manakai@suika.fam.cx,2005-11:non-negative-number":
+    case "tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage":
       return (this.value >= 0);
     default:
       return false;
@@ -1082,6 +1093,7 @@ cx.fam.suika.y2005.CSS.Value.HSLAValue.prototype.toString = function () {
 cx.fam.suika.y2005.CSS.Value.ValueList = function () {
   cx.fam.suika.y2005.CSS.Value.ValueList._superclass.apply (this, []);
   this.items = [];
+  this.separator = " ";
 };
 cx.fam.suika.y2005.CSS.Value.ValueList.inherits
   (cx.fam.suika.y2005.CSS.Value.Value);
@@ -1092,6 +1104,14 @@ cx.fam.suika.y2005.CSS.Value.ValueList.prototype.getTypeURI = function () {
 
 cx.fam.suika.y2005.CSS.Value.ValueList.prototype.matchTypeURI = function (typeURI) {
   return (typeURI == "tag:manakai@suika.fam.cx,2005-11:VALUE_LIST");
+};
+
+/**
+   Adds an item to the list.
+   [non-standard]
+*/
+cx.fam.suika.y2005.CSS.Value.ValueList.prototype.addItem = function (newItem) {
+  this.items.push (newItem);
 };
 
 /**
@@ -1114,7 +1134,11 @@ cx.fam.suika.y2005.CSS.Value.ValueList.prototype.getCSSText = function () {
   if (this.items.length == 0) {
     return "none";
   } else {
-    /* TODO: separeted by what? */
+    var r = this.items[0].getCSSText ();
+    for (var i = 1; i < this.items.length; i++) {
+      r += this.separator + this.items[i].getCSSText ();
+    }
+    return r;
   }
 };
 /* Not implemented: |setCSSText| */
@@ -1123,7 +1147,7 @@ cx.fam.suika.y2005.CSS.Value.ValueList.prototype.toString = function () {
   return "[object CSSValueList]";
 };
 
-/* Revision: $Date: 2005/11/06 14:24:23 $ */
+/* $Date: 2005/11/07 10:47:00 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

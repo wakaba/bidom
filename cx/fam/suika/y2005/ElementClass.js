@@ -43,7 +43,7 @@ cx.fam.suika.y2005.DOM.Node.Element._AddFeature
     getClassNames: function () {
       var vals = [];
       var a = [["http://www.w3.org/1999/xhtml", "class"],
-               ["http://www.w3.org/2002/xhtml2/", "class"]];
+               ["http://www.w3.org/2002/06/xhtml2/", "class"]];
       for (var n in a) {
         var v = this.getAttributeNS (a[n][0], a[n][1]).split (/\s+/);
         for (var j in v) {
@@ -53,7 +53,7 @@ cx.fam.suika.y2005.DOM.Node.Element._AddFeature
       var b = [["http://www.w3.org/1999/xhtml", null, "class"],
                ["http://www.w3.org/2000/svg", null, "class"],
                ["http://www.w3.org/1998/Math/MathML", null, "class"],
-               ["http://www.w3.org/2002/xhtml2/", null, "class"],
+               ["http://www.w3.org/2002/06/xhtml2/", null, "class"],
                ["urn:x-suika-fam-cx:markup:suikawiki:0:9:", null, "class"],
                ["urn:x-suika-fam-cx:markup:suikawiki:0:10:", null, "class"],
                ["urn:x-suika-fam-cx:markup:ietf:html:3:draft:00:", null, "class"]];
