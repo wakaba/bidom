@@ -222,7 +222,7 @@ function (parentNode) {
       var rs = this._Factory.createCSSRuleSet (sel);
       this._ParseDeclarationBlockContent (rs);
       token = this._PopToken (false);
-      if (token && token.type == "}") {
+      if (!token || token.type == "}") {
         parentNode.appendCSSRule (rs);
         /* Skips |S| if any */
         token = this._PopToken (false);
@@ -263,24 +263,27 @@ function (parentNode) {
       token = this._PopToken (false);
       if (token && token.type == "DELIM" && token.value == ":") {
         token = this._PopToken (false);
-        var pp = cx.fam.suika.y2005.CSS.Property._Prop[prop.namespaceURI] != null
-                 ? cx.fam.suika.y2005.CSS.Property._Prop
-                     [prop.namespaceURI][prop.localName]
-                 : null;
-        if (pp != null) {
+        var pp = cx.fam.suika.y2005.CSS.Property.getPropertyDefinition
+                   (prop.namespaceURI, prop.localName);
+        if (pp.isSupported) {
           this._TokenStack.push (token);
-          pp.parsePropertyValue.apply (this, [block, prop, pp]);
-            /* |pp| should not add a (valid) node if
-               the next token is different from |}|, |;|, or the end of the input */
-          token = this._PopToken ();
-          if (!token) {
-            return;
-          } else if (token.type == ";") {
+          var valsrc = pp.parseValueFromTokens
+                         (this, prop.namespaceURI, prop.prefix, prop.localName);
+          if (valsrc != null) var priority = this._GetPrioriry ();
+          if (priority != null) {
+            token = this._PopToken ();
+            if (!token || token.type == "}") {
+              pp.setDeclaredValue (prop.namespaceURI, prop.prefix, prop.localName,
+                                   block, valsrc, priority);
+              return;
+            } else if (token.type == ";") {
+              pp.setDeclaredValue (prop.namespaceURI, prop.prefix, prop.localName,
+                                   block, valsrc, priority);
+              token = this._PopToken (false);
+              continue D;
+            }
+          } else {
             token = this._PopToken (false);
-            continue D;
-          } else if (token.type == "}") {
-            this._TokenStack.push (token);
-            return;
           }
         }
       }
@@ -1589,7 +1592,7 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._PopChar = function () {
   return ch;
 };
 
-/* Revision: $Date: 2005/11/07 10:47:00 $ */
+/* Revision: $Date: 2005/11/07 14:27:03 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

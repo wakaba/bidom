@@ -1,5 +1,14 @@
 2005-11-07  Wakaba  <w@suika.fam.cx>
 
+	* Node.js: Requires |CSS.Property| module.
+	Use |CSS.Property.MultiValueSet| class instead of |CSS.Node.StyleDeclaration|
+	for performance consideration.
+	
+	* Property.js (CSS.Property.MultiValueSet): New class.
+	(CSS.Property.Definition, getPropertyDefinition): New class and function.
+
+2005-11-07  Wakaba  <w@suika.fam.cx>
+
 	* Property.js: Support for |padding-left|, |padding-top|, |padding-bottom|,
 	|padding-right|, |margin-left|, |margin-right|, |margin-top|,
 	|margin-bottom|, |border-style-top|, |border-style-bottom|,

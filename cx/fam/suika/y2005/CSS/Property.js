@@ -510,7 +510,7 @@ function (propList, propSet, parentPropSet, mediaManager) {
    unlike |CSSStyleDeclaration| class in |CSS.Node| module.
 */
 cx.fam.suika.y2005.CSS.Property.PropertySet = function () {
-  this.v = [];
+  this.v = {};
 };
 
 /**
@@ -608,6 +608,445 @@ cx.fam.suika.y2005.CSS.Property.PropertySet.prototype.toString = function () {
   return "[CSSStyleDeclaration]";
 };
 
+
+/**
+   Class |CSS.Property.MultiValueSet|
+     Implements:
+       |CSSStyleDeclaration| [DOM Level 2 CSS] (partially)
+       |CSSPropertySet|
+
+   The |CSS.Property.MultiValueSet| is yet another implementation (with
+   some extention) of |CSSPropertySet|, which allows a property
+   to have more than one values.
+       In the declaration block of the CSS style sheet source entity,
+   there might be more than one declarations for a property.  Since
+   the CSS forward compatible parsing rules is so defined that unknown
+   property values are ignored and later declaration wins, it is used
+   to specify values for different levels of implementations.  Although
+   the current implementation of |CSS.Property.Definition| are intended to
+   discard values in unknown syntax and values in known syntax whose
+   semantics is not known, the implementation may still encount to the
+   value whose semantics is known but cannot be supported because of the
+   limitations of the rendering engine.
+   
+       Note.  The order of values for different properties are not
+              preserved while the order in the same property is preserved.
+
+       Note.  This class ensures a value is valid for the property
+              before the addition of the value.
+*/
+cx.fam.suika.y2005.CSS.Property.MultiValueSet = function () {
+  this.v = {};
+  this.important = {};
+};
+
+/**
+   Adds a property value.
+   [non-standard]
+   
+   @param namespaceURI  The namespace URI of the property.
+   @param prefix        The namespace prefix of the property.
+   @param localName     The local name of the property.
+   @param value         The |CSSValue| of the property.  If the value is 
+                        invalid for the property, the method invocation has no effect.
+   @param priority      The priority object, if any, or |null|.
+*/
+cx.fam.suika.y2005.CSS.Property.MultiValueSet.prototype.addPropertyValueNS =
+function (namespaceURI, prefix, localName, value, priority) {
+  if (!cx.fam.suika.y2005.CSS.Property.getPropertyDefinition (namespaceURI, localName)
+         .isValidValue (namespaceURI, localName, value)) {
+    return;
+  }
+  var key = namespaceURI + localName;
+  if (this.v[key]) {
+    switch (priority ? priority.getExpandedURI ()
+                     : "http://suika.fam.cx/~wakaba/archive/2005/cssc.normal") {
+    case "http://suika.fam.cx/~wakaba/archive/2005/cssc.normal":
+      this.v[key].push (value);
+      break;
+    case "urn:x-suika-fam-cx:css:important":
+      this.important[key].push (value);
+      break;
+    }
+  } else {
+    switch (priority ? priority.getExpandedURI ()
+                     : "http://suika.fam.cx/~wakaba/archive/2005/cssc.normal") {
+    case "http://suika.fam.cx/~wakaba/archive/2005/cssc.normal":
+      this.v[key] = [value];
+      this.v[key].namespaceURI = namespaceURI;
+      this.v[key].prefix = prefix;
+      this.v[key].localName = localName;
+      this.important[key] = [];
+      this.important[key].namespaceURI = namespaceURI;
+      this.important[key].prefix = prefix;
+      this.important[key].localName = localName;
+      break;
+    case "urn:x-suika-fam-cx:css:important":
+      this.v[key] = [];
+      this.v[key].namespaceURI = namespaceURI;
+      this.v[key].prefix = prefix;
+      this.v[key].localName = localName;
+      this.important[key] = [value];
+      this.important[key].namespaceURI = namespaceURI;
+      this.important[key].prefix = prefix;
+      this.important[key].localName = localName;
+      break;
+    }
+  }
+};
+
+/**
+   The textual representation of the style declarations, excluding the
+   surrounding curly braces.
+   [DOM Level 2 CSS]
+   
+   Note that namespace fix up is not done.
+*/
+cx.fam.suika.y2005.CSS.Property.MultiValueSet.prototype.getCSSText =
+function () {
+  var r = "";
+  P: for (var xuri in this.v) {
+    var values = this.v[xuri];
+    if (!values) continue P;
+    var name = "  ";
+    if (values.prefix == null) {
+      name += values.localName + ": ";
+    } else {
+      name += "-" + values.prefix + "-" + values.localName + ": ";
+    }
+    for (var i = 0; i < values.length; i++) {
+      r += ": " + values[i].getCSSText () + ";\n";
+    }
+    var values = this.important[xuri];
+    for (var i = 0; i < values.length; i++) {
+      r += ": " + values[i].getCSSText () + " !important;\n";
+    }
+  }
+  return r;
+};
+
+/**
+   Gets a property name prefix.
+   [non-standard]
+   
+   @param namespaceURI  The namespace URI of the property.
+   @param localName     The local name of the property.
+   @return The namespace prefix of the property, if any, or |null|.
+*/
+cx.fam.suika.y2005.CSS.Property.MultiValueSet.prototype._GetPropertyPrefix =
+function (namespaceURI, localName) {
+  if (this.v[namespaceURI + localName]) {
+    return this.v[namespaceURI + localName].prefix;
+  } else {
+    return null;
+  }
+};
+
+/**
+   Gets a property value.
+   [non-standard]
+   
+   @param namespaceURI  The namespace URI of the property.
+   @param localName     The local name of the property.
+   @return The |CSSValue| of the property, if any, or |null|.
+*/
+cx.fam.suika.y2005.CSS.Property.MultiValueSet.prototype.getSpecifiedPropertyValueNS =
+function (namespaceURI, localName) {
+  var key = namespaceURI + localName;
+  if (this.v[key]) {
+    if (this.important[key].length > 0) {
+      return this.important[key][this.important[key].length - 1];
+    } else {
+      return this.v[key][this.v[key].length - 1];
+    }
+  } else {
+    return null;
+  }
+};
+
+/**
+   Gets an array of the property values.
+   [non-standard]
+   
+   @param namespaceURI  The namespace URI of the property.
+   @param localName     The local name of the property.
+   @param priority      The priority value, if any, or |null|.
+   @return The |Array| of the property values.
+*/
+cx.fam.suika.y2005.CSS.Property.MultiValueSet.prototype.getSpecifiedPropertyValuesNS =
+function (namespaceURI, localName, priority) {
+  var key = namespaceURI + localName;
+  if (this.v[key]) {
+    switch (priority ? priority.getExpandedURI ()
+                     : "http://suika.fam.cx/~wakaba/archive/2005/cssc.normal") {
+    case "http://suika.fam.cx/~wakaba/archive/2005/cssc.normal":
+      return this.v[key];
+    default:
+      return this.important[key];
+    }
+  } else {
+    return null;
+  }
+};
+
+/**
+   Returns whether a property has value or not.
+   [non-standard]
+   
+   @param namespaceURI  The namespace URI of the property.
+   @param localName     The local name of the property.
+   @return |true| or |false|.
+*/
+cx.fam.suika.y2005.CSS.Property.MultiValueSet.prototype.hasSpecifiedPropertyValueNS =
+function (namespaceURI, localName) {
+  var key = namespaceURI + localName;
+  if (this.v[key]) {
+    return (this.v[key].length > 0 || this.important[key].length > 0);
+  } else {
+    return false;
+  }
+};
+
+/**
+   Sets a property value.  It clears the set of property values before addition.
+   [non-standard]
+   
+   @param namespaceURI  The namespace URI of the property.
+   @param prefix        The namespace prefix of the property.
+   @param localName     The local name of the property.
+   @param value         The |CSSValue| of the property.
+   @param priority      The priority object, if any, or |null|.
+*/
+cx.fam.suika.y2005.CSS.Property.MultiValueSet.prototype.setPropertyValueNS =
+function (namespaceURI, prefix, localName, value, priority) {
+  if (!cx.fam.suika.y2005.CSS.Property.getPropertyDefinition (namespaceURI, localName)
+         .isValidValue (namespaceURI, localName, value)) {
+    return;
+  }
+  var key = namespaceURI + localName;
+  switch (priority ? priority.getExpandedURI ()
+                   : "http://suika.fam.cx/~wakaba/archive/2005/cssc.normal") {
+  case "http://suika.fam.cx/~wakaba/archive/2005/cssc.normal":
+    this.v[key] = [value];
+    this.v[key].namespaceURI = namespaceURI;
+    this.v[key].prefix = prefix;
+    this.v[key].localName = localName;
+    this.important[key] = [];
+    this.important[key].namespaceURI = namespaceURI;
+    this.important[key].prefix = prefix;
+    this.important[key].localName = localName;
+    break;
+  case "urn:x-suika-fam-cx:css:important":
+    this.v[key] = [];
+    this.v[key].namespaceURI = namespaceURI;
+    this.v[key].prefix = prefix;
+    this.v[key].localName = localName;
+    this.important[key] = [value];
+    this.important[key].namespaceURI = namespaceURI;
+    this.important[key].prefix = prefix;
+    this.important[key].localName = localName;
+    break;
+  }
+};
+
+cx.fam.suika.y2005.CSS.Property.MultiValueSet.prototype.toString = function () {
+  return "[CSSStyleDeclaration]";
+};
+
+
+
+/**
+   Returns the definition of a property, if any, or an empty
+   definition for unsupported property.
+*/
+cx.fam.suika.y2005.CSS.Property.getPropertyDefinition =
+function (namespaceURI, localName) {
+  if (cx.fam.suika.y2005.CSS.Property.Definition[namespaceURI + localName]) {
+    return cx.fam.suika.y2005.CSS.Property.Definition[namespaceURI + localName];
+  } else {
+    return new cx.fam.suika.y2005.CSS.Property.Definition ({isSupported: true});
+  }
+};
+
+/**
+   Class |CSS.Property.Definition|
+   
+   A |CSS.Property.Definition| object represents the definition of a property.
+*/
+cx.fam.suika.y2005.CSS.Property.Definition = function (template) {
+  for (var i in template) {
+    switch (i) {
+    default:
+      this[i] = template[i];
+    }
+  }
+  if (typeof (this.validKeyword) == "undefined") this.validKeyword = {};
+  if (typeof (this.validFunction) == "undefined") this.validFunction = {};
+  this.validKeyword["urn:x-suika-fam-cx:css:inherit"] = true;
+  this.validKeyword["urn:x-suika-fam-cx:css:-moz-initial"] = true;
+  this.validKeyword["http://suika.fam.cx/~wakaba/archive/2005/cssc.initial"] = true;
+};
+
+
+/**
+   The "well-known" namespace prefix of the property, or |null|
+   for properties in the standard namespace.
+*/
+cx.fam.suika.y2005.CSS.Property.Definition.prototype.prefix = null;
+
+/**
+   Whether the property is supported or not.
+*/
+cx.fam.suika.y2005.CSS.Property.Definition.prototype.isSupported = true;
+
+/**
+   Whether the property is a shorthand property in the implementation or not.
+*/
+cx.fam.suika.y2005.CSS.Property.Definition.prototype.isShorthand = false;
+
+/**
+   Whether the property does inherit or not.
+*/
+cx.fam.suika.y2005.CSS.Property.Definition.prototype.inherit = false;
+
+/**
+   The initial value.
+*/
+cx.fam.suika.y2005.CSS.Property.Definition.prototype.initialValue
+  = new cx.fam.suika.y2005.CSS.Value.IdentValue
+                   ("http://suika.fam.cx/~wakaba/archive/2005/cssc.",
+                    "manakai_c", "user-agent-dependent");
+
+/**
+   Parses the property value without priority declaration, from
+   the token sequence.
+   
+       Note.  If the implementation supports the value specified in the
+              property declaration, then the method must return a value
+              that holds information on the value and the |parser|'s
+              head must reference the next token, whose value might be |!|
+              introducing the priority declaration for the property,
+              to the last token of the property value, if any.  The
+              value returned from the method would be passed to
+              |setDeclaredValue| method unless the parser is encounted
+              to a parse error before the |;|, |}|, or end of the entity that
+              terminates the property declaration.  The method may or
+              may not discard any value that is syntatically legal but 
+              inappropriate or unsupported for the property.  Such values are
+              discarded at the time of added to property sets in any way.
+                  If the implementation does not support the value specified
+              in the property declaration, including cases of parse errors, 
+              then the method must return a |null|.  If the method
+              returns |null|, the parser would skip until the end of the
+              property declaration.
+
+   @param parser         The |CSS.SimpleParser| object that is reached at a
+                         property value.
+   @param namespaceURI   The namespace URI of the property.
+   @param prefix         The namespace prefix of the property, if any, or |null|.
+   @param localName      The local name of the property.
+   @return A non-|null| value, or |null| indicating parse error.
+*/
+cx.fam.suika.y2005.CSS.Property.Definition.prototype.parseValueFromTokens =
+function (parser, namespaceURI, prefix, localName) {
+  return null;
+};
+
+/**
+   Sets a value or a set of values to a set of properties.  For shorthand
+   properties, values must be set to longhand properties.
+   
+   @param namespaceURI   The namespace URI of the property.
+   @param prefix         The namespace prefix of the property, if any, or |null|.
+   @param localName      The local name of the property.
+   @param propSet        The property set to which the value(s) should be set.
+   @param valueSet       The object returned by |parseValueFromTokens| method.
+*/
+cx.fam.suika.y2005.CSS.Property.Definition.prototype.setDeclaredValue =
+function (namespaceURI, prefix, localName, propSet, valueSource, priority) {
+  /*
+     This template sets the |valueSource| as a property value.
+     Unless this method is overridden, the |parseVaueFromTokens| method
+     must return a |CSSValue| object valid for the property.
+  */
+  propSet.addPropertyValueNS
+    (namespaceURI, prefix, localName,
+     this.convertToDeclaredValue (namespaceURI, localName, valueSource), priority);
+  /*
+        Note.  Using public methods in |CSS.Property.MultiValueSet|
+               ensures that unsupported values are not set and that
+               values are normalized in the |propSet|.
+  */
+};
+
+/**
+   Converts a value returned by |parseValueFromTokens| into a |CSSValue|.
+   
+       Note.  Shorthand properties does not need to implement this method.
+
+   @param namespaceURI   The namespace URI of the property.
+   @param localName      The local name of the property.
+   @param valueSource    The value returned by |parseValueFromTokens|.
+   @return  A |CSSValue|.
+*/
+cx.fam.suika.y2005.CSS.Property.Definition.prototype.convertToDeclaredValue =
+function (namespaceURI, localName, valueSource) {
+};
+
+/**
+   Returns whether a value is valid for the property or not.
+   For longhand properties, it must return a |false|.
+   
+   @param namespaceURI  The namespace URI of the property.
+   @param localName     The local name of the property.
+   @param value         The value to test.
+   @return |true| or |false|.
+*/
+cx.fam.suika.y2005.CSS.Property.Definition.prototype.isValidValue =
+function (namespaceURI, localName, value) {
+  return false;
+};
+
+/**
+   Sets the computed value of a specified value of the property.
+   
+   @param namespaceURI  The namespace URI of the property.
+   @param prefix        The namespace prefix of the property, if any, or |null|.
+   @param localName     The local name of the property.
+   @param parentPropSet The parent property set from which the computed value
+                        is taken in the case of |inherit| value, if any, or |null|.
+   @param propSet       The property set for computed values.
+   @param elementNode   The |Element| for which the value is computed.  If the
+                        specified value contains |attr()| function, its value
+                        is taken from this node.
+   @param value         The specified value.  The |value| comes from
+                        the source where it is ensured that the |value|
+                        is valid as a specified value of the property.
+*/
+cx.fam.suika.y2005.CSS.Property.Definition.prototype.setComputedValue =
+function (namespaceURI, prefix, localName, parentPropSet, propSet, value,
+          elementNode) {
+  switch (val.getTypeURI ()) {
+  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    switch (val.getExpandedURI ()) {
+    case "urn:x-suika-fam-cx:css:inherit":
+      /* CSS2 |inherit| value */
+      if (parentPropSet != null) {
+        propSet.setPropertyValueNS (namespaceURI, prefix, localName,
+                                    parentPropSet.getSpecifiedPropertyValueNS
+                                      (namespaceURI, localName));
+        return /* OK */;
+      }
+      break;
+    case "http://suika.fam.cx/~wakaba/archive/2005/cssc.initial":
+    case "urn:x-suika-fam-cx:css:-moz-initial":
+      /* CSS3 |initial| value */
+      break;
+    }
+    break;
+  }
+  propSet.setPropertyValueNS (namespaceURI, prefix, localName, this.initialValue);
+};
 
 /**
    A template for property definitions.
@@ -3142,7 +3581,7 @@ cx.fam.suika.y2005.CSS.Property._Prop
   })
 };
 
-/* Revision: $Date: 2005/11/07 10:47:00 $ */
+/* Revision: $Date: 2005/11/07 14:27:03 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

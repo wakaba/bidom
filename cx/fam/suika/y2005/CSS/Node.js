@@ -22,6 +22,7 @@ JSAN.require ("cx.fam.suika.y2005.DOM.Implementation");
 JSAN.require ("cx.fam.suika.y2005.CSS.Selectors");
 JSAN.require ("cx.fam.suika.y2005.CSS.Value");
 //JSAN.require ("cx.fam.suika.y2005.CSS.MediaQuery");
+JSAN.require ("cx.fam.suika.y2005.CSS.Property");
 
 /**
    Interface |DOMImplementationCSS|
@@ -520,7 +521,6 @@ cx.fam.suika.y2005.CSS.Node.MediaRule = function (mq) {
   cx.fam.suika.y2005.CSS.Node.MediaRule._superclass.apply
     (this, ["urn:x-suika-fam-cx:css:", "media"]);
   this.cssRules = new cx.fam.suika.y2005.CSS.RuleList ();
-  this.style = new cx.fam.suika.y2005.CSS.Node.StyleDeclaration ();
   if (mq != null) {
     this.media = mq;
   } else {
@@ -587,7 +587,7 @@ cx.fam.suika.y2005.CSS.Node.MediaRule.prototype.toString = function () {
 cx.fam.suika.y2005.CSS.Node.FontFaceRule = function () {
   cx.fam.suika.y2005.CSS.Node.FontFaceRule._superclass.apply
     (this, ["urn:x-suika-fam-cx:css:", "font-face"]);
-  this.style = new cx.fam.suika.y2005.CSS.Node.StyleDeclaration ();
+  this.style = new cx.fam.suika.y2005.CSS.Property.MultiValueSet ();
 };
 cx.fam.suika.y2005.CSS.Node.FontFaceRule.inherits (cx.fam.suika.y2005.CSS.Node.AtRule);
 cx.fam.suika.y2005.CSS.Node.FontFaceRule.prototype.getCSSNodeType = function () {
@@ -900,7 +900,7 @@ cx.fam.suika.y2005.CSS.Node.UnknownRule.prototype.getType = function () {
 cx.fam.suika.y2005.CSS.Node.RuleSet = function (sel) {
   cx.fam.suika.y2005.CSS.Node.RuleSet._superclass.apply (this, []);
   this.selector = sel;
-  this.style = new cx.fam.suika.y2005.CSS.Node.StyleDeclaration ();
+  this.style = new cx.fam.suika.y2005.CSS.Property.MultiValueSet ();
   this.style.parentRule = this;
 };
 cx.fam.suika.y2005.CSS.Node.RuleSet.inherits (cx.fam.suika.y2005.CSS.Node.Rule);
@@ -1258,7 +1258,7 @@ cx.fam.suika.y2005.CSS.RuleList.prototype.toString = function () {
   return "[object CSSRuleList]";
 };
 
-/* Revision: $Date: 2005/11/05 12:04:34 $ */
+/* Revision: $Date: 2005/11/08 13:58:50 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.
