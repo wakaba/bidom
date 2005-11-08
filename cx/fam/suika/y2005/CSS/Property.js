@@ -33,6 +33,22 @@ cx.fam.suika.y2005.DOM.Node.Element._AddFeature
 
 /**
    Interface |CSSPropertyValueComputer|
+
+Literal   :  |supported|  |unsupported|  |invalid|  |ill@formed|
+<(tokenization)>
+Tokenized :  |supported|  |unsupported|  |invalid|  |ill| |formed|
+<parseValueFromTokens>
+Declared0 :  "supported"  "unsupported"  "invalid"  null
+                                         or null
+<setDeclaredValue> <convertToDeclaredValue> <isValidValue>
+Declared1 :  "supported"  "unsupported"  null       N/A
+<isSupportedValue>
+Specified :  "supported"  N/A            N/A        N/A
+
+
+
+|textual representation|
+"CSSValue object"
 */
 cx.fam.suika.y2005.CSS.Property.Computer =
 function (uaStyleSheetList, userStyleSheetList) {
@@ -93,7 +109,7 @@ function (authorStyleSheetList, rootElement, mediaManager) {
     usdecls = usdecls[""] != null ? usdecls[""][1] : [];
     
     /* Gets a set of computed values for an element */
-    var vals = this._GetCascadedValueSet (uadecls, usdecls, audecls, []);
+    var vals = this._GetCascadedValueSet (uadecls, usdecls, audecls, [], mediaManager);
     var proplist =
       [
        ["urn:x-suika-fam-cx:css:", "clear"],
@@ -155,7 +171,7 @@ function (authorStyleSheetList, rootElement, mediaManager) {
       ];
                   /* mediaManager._GetSupportedPropertyNameList */
     this._ComputeSpecifiedValue (proplist, vals, el[1], mediaManager);
-    this._ComputeComputedValue (proplist, vals, el[1], mediaManager);
+    this._ComputeComputedValue (proplist, el[1], vals, el[0]);
     el[0]._SetComputedValueSetForMedia (vals, mediaManager);
     
     var elcs = el[0].getChildNodes ();
@@ -253,6 +269,13 @@ function (styleSheetList, elementNode, mediaManager) {
    @param userDeclarations       A list of declarations from user style sheets.
    @param authorDeclarations     A list of declarations from author style sheets.
    @param overrideDeclarations   A list of declarations from override style sheets.
+   @param mediaManager           The layout engine for which the cascaded value
+                                 is computed.  It is expected that the engine
+                                 provides information on whether a particular
+                                 value, e.g. |rgba()| is supported in the engine
+                                 or not.  If a declared value is not supported,
+                                 then the value is ignored as per the forward
+                                 compatible rule of CSS.
    @return A set of properties as a |CSSPropertyDeclaration| object.
 */
 cx.fam.suika.y2005.CSS.Property.Computer.prototype._GetCascadedValueSet =
@@ -269,42 +292,41 @@ function (userAgentDeclarations, userDeclarations,
       return c;
     }
   };
+  
+  var important = new cx.fam.suika.y2005.CSS.Value.IdentValue
+                        ("urn:x-suika-fam-cx:css:", null, "important");
 
   userAgentDeclarations = userAgentDeclarations.sort (cmps);
   for (var i in userAgentDeclarations) {
     var decls = userAgentDeclarations[i][0];
-    var declsl = decls.getDeclarationLength ();
-    for (var j = 0; j < declsl; j++) {
-      var decl = decls.getDeclarationNode (j);
-      if (decl.getCSSNodeType () == decl.CSS_PROPERTY_DECLARATION_NODE) {
-        var im = decl.getPriority ();
-        var imns = im.getNamespaceURI ();
-        var imln = im.getLocalName ();
-        if ((imns == "http://suika.fam.cx/~wakaba/archive/2005/cssc." &&
-             imln == "normal") ||
-            (imns == "urn:x-suika-fam-cx:css:" && imln == "important")) {
-          props3.push (decl);
-        }
+    var propnames = decls.getSpecifiedPropertyNameList ();
+    for (var k in propnames) {
+      var propname = propnames[k];
+      var vals = decls.getSpecifiedPropertyValuesNS (propname[0], propname[2], null);
+      for (var j = 0; j < vals.length; j++) {
+        props1.push ([propname, vals[j]]);
+      }
+      vals = decls.getSpecifiedPropertyValuesNS (propname[0], propname[2], important);
+      for (var j = 0; j < vals.length; j++) {
+        props2.push ([propname, vals[j]]);
       }
     }
   }
+  for (var i = 0; i < props2.length; i++) { props1.push (props2[i]) }
 
   userDeclarations = userDeclarations.sort (cmps);
   for (var i in userDeclarations) {
     var decls = userDeclarations[i][0];
-    var declsl = decls.getDeclarationLength ();
-    for (var j = 0; j < declsl; j++) {
-      var decl = decls.getDeclarationNode (j);
-      if (decl.getCSSNodeType () == decl.CSS_PROPERTY_DECLARATION_NODE) {
-        var im = decl.getPriority ();
-        var imns = im.getNamespaceURI ();
-        var imln = im.getLocalName ();
-        if (imns == "http://suika.fam.cx/~wakaba/archive/2005/cssc." &&
-            imln == "normal") {
-          props1.push (decl);
-        } else if (imns == "urn:x-suika-fam-cx:css:" && imln == "important") {
-          props3.push (decl);
-        }
+    var propnames = decls.getSpecifiedPropertyNameList ();
+    for (var k in propnames) {
+      var propname = propnames[k];
+      var vals = decls.getSpecifiedPropertyValuesNS (propname[0], propname[2], null);
+      for (var j = 0; j < vals.length; j++) {
+        props1.push ([propname, vals[j]]);
+      }
+      vals = decls.getSpecifiedPropertyValuesNS (propname[0], propname[2], important);
+      for (var j = 0; j < vals.length; j++) {
+        props3.push ([propname, vals[j]]);
       }
     }
   }
@@ -312,19 +334,16 @@ function (userAgentDeclarations, userDeclarations,
   authorDeclarations = authorDeclarations.sort (cmps);
   for (var i in authorDeclarations) {
     var decls = authorDeclarations[i][0];
-    var declsl = decls.getDeclarationLength ();
-    for (var j = 0; j < declsl; j++) {
-      var decl = decls.getDeclarationNode (j);
-      if (decl.getCSSNodeType () == decl.CSS_PROPERTY_DECLARATION_NODE) {
-        var im = decl.getPriority ();
-        var imns = im.getNamespaceURI ();
-        var imln = im.getLocalName ();
-        if (imns == "http://suika.fam.cx/~wakaba/archive/2005/cssc." &&
-            imln == "normal") {
-          props1.push (decl);
-        } else if (imns == "urn:x-suika-fam-cx:css:" && imln == "important") {
-          props2.push (decl);
-        }
+    var propnames = decls.getSpecifiedPropertyNameList ();
+    for (var k in propnames) {
+      var propname = propnames[k];
+      var vals = decls.getSpecifiedPropertyValuesNS (propname[0], propname[2], null);
+      for (var j = 0; j < vals.length; j++) {
+        props1.push ([propname, vals[j]]);
+      }
+      vals = decls.getSpecifiedPropertyValuesNS (propname[0], propname[2], important);
+      for (var j = 0; j < vals.length; j++) {
+        props2.push ([propname, vals[j]]);
       }
     }
   }
@@ -332,36 +351,29 @@ function (userAgentDeclarations, userDeclarations,
   overrideDeclarations = overrideDeclarations.sort (cmps);
   for (var i in overrideDeclarations) {
     var decls = overrideDeclarations[i][0];
-    var declsl = decls.getDeclarationLength ();
-    for (var j = 0; j < declsl; j++) {
-      var decl = decls.getDeclarationNode (j);
-      if (decl.getCSSNodeType () == decl.CSS_PROPERTY_DECLARATION_NODE) {
-        var im = decl.getPriority ();
-        var imns = im.getNamespaceURI ();
-        var imln = im.getLocalName ();
-        if (imns == "http://suika.fam.cx/~wakaba/archive/2005/cssc." &&
-            imln == "normal") {
-          props1.push (decl);
-        } else if (imns == "urn:x-suika-fam-cx:css:" && imln == "important") {
-          props2.push (decl);
-        }
+    var propnames = decls.getSpecifiedPropertyNameList ();
+    for (var k in propnames) {
+      var propname = propnames[k];
+      var vals = decls.getSpecifiedPropertyValuesNS (propname[0], propname[2], null);
+      for (var j = 0; j < vals.length; j++) {
+        props1.push ([propname, vals[j]]);
+      }
+      vals = decls.getSpecifiedPropertyValuesNS (propname[0], propname[2], important);
+      for (var j = 0; j < vals.length; j++) {
+        props2.push ([propname, vals[j]]);
       }
     }
   }
   
-  var propset = new cx.fam.suika.y2005.CSS.Property.PropertySet ();
+  var propSet = new cx.fam.suika.y2005.CSS.Property.PropertySet ();
   for (var i = 0; i < props2.length; i++) { props1.push (props2[i]) }
   for (var i = 0; i < props3.length; i++) { props1.push (props3[i]) }
   for (var i in props1) {
     var prop = props1[i];
-    var propns = prop.getPropertyNamespaceURI ();
-    var propln = prop.getPropertyLocalName ();
-    var p = cx.fam.suika.y2005.CSS.Property._Prop[propns] != null
-              ? cx.fam.suika.y2005.CSS.Property._Prop[propns][propln] : null;
-    if (p == null) continue;
-    p.setSpecifiedValues (propns, prop.getPropertyPrefix (), propln, prop, propset);
+    /* TODO: Query |mediaManager| to set value or not */
+    propSet.setPropertyValueNS (prop[0][0], prop[0][1], prop[0][2], prop[1]);
   }
-  return propset;
+  return propSet;
 };
 
 /**
@@ -389,19 +401,20 @@ function (propList, propSet, parentPropSet, mediaManager) {
   for (var i in propList) {
     var pn = propList[i];
     if (pn[0] == "http://suika.fam.cx/~wakaba/archive/2005/11/css.props.") {
+      /* Dummy properties */
       continue;
     } else if (propSet.hasSpecifiedPropertyValueNS (pn[0], pn[1])) {
       continue;
     } else {
-      var p = cx.fam.suika.y2005.CSS.Property._Prop[pn[0]] != null
-                ? cx.fam.suika.y2005.CSS.Property._Prop[pn[0]][pn[1]] : null;
-      if (parentPropSet != null && p.inherit) {
+      var propDef = cx.fam.suika.y2005.CSS.Property.getPropertyDefinition
+                      (pn[0], pn[1]);
+      if (parentPropSet != null && propDef.inherit) {
         propSet.setPropertyValueNS
-          (pn[0], parentPropSet._GetPropertyPrefix (pn[0], pn[1]),
+          (pn[0], propDef.prefix,
            pn[1], parentPropSet.getSpecifiedPropertyValueNS (pn[0], pn[1]));
       } else {
         propSet.setPropertyValueNS
-          (pn[0], p.prefix, pn[1], p.initial);
+          (pn[0], propDef.prefix, pn[1], propDef.initialValue);
       }
     }
   }
@@ -415,88 +428,19 @@ function (propList, propSet, parentPropSet, mediaManager) {
                     local name pairs, which indicates what properties should
                     be set their specified values.  Note that the order
                     *is* significant for this method.
-   @param propSet   A property set containing cascaded values.
    @param parentPropSet A property set containing computed values of the
                     parent element, if any, or |null|.
-   @param mediaManager A media manager.
-                        ISSUE: Is this parameter necessary?
+   @param propSet   A property set containing cascaded values.
+   @param elementNode The element for which the value is computed.
 */
 cx.fam.suika.y2005.CSS.Property.Computer.prototype._ComputeComputedValue =
-function (propList, propSet, parentPropSet, mediaManager) {
+function (propList, parentPropSet, propSet, elementNode) {
   P: for (var i = 0; i < propList.length; i++) {
     var pn = propList[i];
-    if (pn[0] == "http://suika.fam.cx/~wakaba/archive/2005/11/css.props.") {
-      /* Computes value from multiple properties' semi-computed values */
-      cx.fam.suika.y2005.CSS.Property._Prop[pn[0]][pn[1]].setComputedValue
-        (pn[0], null, pn[1], null, propSet, parentPropSet);
-      continue P;
-    }
-    var val = propSet.getSpecifiedPropertyValueNS (pn[0], pn[1]);
-    var ppfx = propSet._GetPropertyPrefix (pn[0], pn[1]);
-    switch (val.getTypeURI ()) {
-    case "tag:manakai@suika.fam.cx,2005-11:IDENT":
-      var setToInitial = false;
-      var p2 = false;
-      switch (val.getExpandedURI ()) {
-      case "urn:x-suika-fam-cx:css:inherit":
-        if (parentPropSet != null) {
-          propSet.setPropertyValueNS
-              (pn[0], ppfx, pn[1],
-               parentPropSet.getSpecifiedPropertyValueNS (pn[0], pn[1]));
-          continue P;
-        } else {
-          setToInitial = true;
-          break;
-        }
-      case "http://suika.fam.cx/~wakaba/archive/2005/cssc.initial":
-      case "urn:x-suika-fam-cx:css:-moz-initial":
-        setToInitial = true;
-        break;
-      case "urn:x-suika-fam-cx:css:currentcolor":
-      case "http://suika.fam.cx/~wakaba/archive/2005/cssc.left-or-right-by-direction":
-        p2 = true;
-        break;
-      }
-      if (setToInitial) {
-        var p = cx.fam.suika.y2005.CSS.Property._Prop[pn[0]] != null
-                    ? cx.fam.suika.y2005.CSS.Property._Prop[pn[0]][pn[1]] : null;
-        propSet.setPropertyValueNS (pn[0], ppfx, pn[1], p.initial);
-        p2 = true;
-      }
-      if (p2 && val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-        switch (val.getExpandedURI ()) {
-        case "urn:x-suika-fam-cx:css:currentcolor":
-          propSet.setPropertyValueNS
-                (pn[0], ppfx, pn[1], propSet.getSpecifiedPropertyValueNS
-                         ("urn:x-suika-fam-cx:css:", "color"));
-          break;
-        case "http://suika.fam.cx/~wakaba/archive/2005/cssc.left-or-right-by-direction":
-          var dirval = propSet.getSpecifiedPropertyValueNS
-                         ("urn:x-suika-fam-cx:css:", "direction");
-          if (dirval.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-            switch (dirval.getExpandedURI ()) {
-            case "urn:x-suika-fam-cx:css:ltr":
-              propSet.setPropertyValueNS
-                (pn[0], ppfx, pn[1],
-                 new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "left"));
-              break;
-            case "urn:x-suika-fam-cx:css:rtl":
-              propSet.setPropertyValueNS
-                (pn[0], ppfx, pn[1],
-                 new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "right"));
-              break;
-            }
-          }
-        } /* val */
-        continue P;
-      } /* p2 */
-    } /* CASCADING_VALUE */
-    
-    var p = cx.fam.suika.y2005.CSS.Property._Prop[pn[0]] != null
-              ? cx.fam.suika.y2005.CSS.Property._Prop[pn[0]][pn[1]] : null;
-    p.setComputedValue (pn[0], ppfx, pn[1], val, propSet, parentPropSet);
+    var propDef = cx.fam.suika.y2005.CSS.Property.getPropertyDefinition (pn[0], pn[1]);
+    var value = propSet.getSpecifiedPropertyValueNS (pn[0], pn[1]);
+    propDef.setComputedValue (pn[0], propDef.prefix, pn[1], parentPropSet, propSet,
+                              value, elementNode);
   } /* P */
 };
 
@@ -715,11 +659,11 @@ function () {
       name += "-" + values.prefix + "-" + values.localName + ": ";
     }
     for (var i = 0; i < values.length; i++) {
-      r += ": " + values[i].getCSSText () + ";\n";
+      r += name + values[i].getCSSText () + ";\n";
     }
     var values = this.important[xuri];
     for (var i = 0; i < values.length; i++) {
-      r += ": " + values[i].getCSSText () + " !important;\n";
+      r += name + values[i].getCSSText () + " !important;\n";
     }
   }
   return r;
@@ -737,6 +681,46 @@ cx.fam.suika.y2005.CSS.Property.MultiValueSet.prototype._GetPropertyPrefix =
 function (namespaceURI, localName) {
   if (this.v[namespaceURI + localName]) {
     return this.v[namespaceURI + localName].prefix;
+  } else {
+    return null;
+  }
+};
+
+/**
+   Returns a snapshot list of namespaceURI, namespace prefix, and local name
+   of properties its value is specified in the collection.
+   [non-standard]
+   
+   @return  An |Array| of |Array|s.
+*/
+cx.fam.suika.y2005.CSS.Property.MultiValueSet
+.prototype.getSpecifiedPropertyNameList = function () {
+  var r = [];
+  for (var xuri in this.v) {
+    if (this.v[xuri].length > 0 || this.important[xuri].length > 0) {
+      r.push ([this.v[xuri].namespaceURI, this.v[xuri].prefix,
+               this.v[xuri].localName]);
+    }
+  }
+  return r;
+};
+
+/**
+   Gets a property value.
+   [non-standard]
+   
+   @param expandedURI   The expanded URI of the property.
+   @return The |CSSValue| of the property, if any, or |null|.
+*/
+cx.fam.suika.y2005.CSS.Property.MultiValueSet
+.prototype.getSpecifiedPropertyValueByExpandedURI =
+function (expandedURI) {
+  if (this.v[expandedURI]) {
+    if (this.important[expandedURI].length > 0) {
+      return this.important[expandedURI][this.important[expandedURI].length - 1];
+    } else {
+      return this.v[expandedURI][this.v[expandedURI].length - 1];
+    }
   } else {
     return null;
   }
@@ -785,7 +769,7 @@ function (namespaceURI, localName, priority) {
       return this.important[key];
     }
   } else {
-    return null;
+    return [];
   }
 };
 
@@ -881,10 +865,13 @@ cx.fam.suika.y2005.CSS.Property.Definition = function (template) {
     }
   }
   if (typeof (this.validKeyword) == "undefined") this.validKeyword = {};
+  if (typeof (this.validKeyword1) == "undefined") this.validKeyword1 = {};
   if (typeof (this.validFunction) == "undefined") this.validFunction = {};
-  this.validKeyword["urn:x-suika-fam-cx:css:inherit"] = true;
-  this.validKeyword["urn:x-suika-fam-cx:css:-moz-initial"] = true;
-  this.validKeyword["http://suika.fam.cx/~wakaba/archive/2005/cssc.initial"] = true;
+  if (typeof (this.validType) == "undefined") this.validType = {};
+  if (typeof (this.validUnit) == "undefined") this.validUnit = {};
+  this.validKeyword1["urn:x-suika-fam-cx:css:inherit"] = true;
+  this.validKeyword1["urn:x-suika-fam-cx:css:-moz-initial"] = true;
+  this.validKeyword1["http://suika.fam.cx/~wakaba/archive/2005/cssc.initial"] = true;
 };
 
 
@@ -991,15 +978,19 @@ function (namespaceURI, prefix, localName, propSet, valueSource, priority) {
 */
 cx.fam.suika.y2005.CSS.Property.Definition.prototype.convertToDeclaredValue =
 function (namespaceURI, localName, valueSource) {
+  return valueSource;
 };
 
 /**
    Returns whether a value is valid for the property or not.
-   For longhand properties, it must return a |false|.
+   For shorthand properties, it must return a |false|.
    
    @param namespaceURI  The namespace URI of the property.
    @param localName     The local name of the property.
-   @param value         The value to test.
+   @param value         The |CSSValue| to test.
+   @param partial       Is |value| is part of a property value or not.
+                        If |true|, keyword in |propDef.validKeyword1|
+                        should be reported as invalid.
    @return |true| or |false|.
 */
 cx.fam.suika.y2005.CSS.Property.Definition.prototype.isValidValue =
@@ -1015,7 +1006,9 @@ function (namespaceURI, localName, value) {
    @param localName     The local name of the property.
    @param parentPropSet The parent property set from which the computed value
                         is taken in the case of |inherit| value, if any, or |null|.
-   @param propSet       The property set for computed values.
+   @param propSet       The property set for computed values.  If no
+                        new value for the property is set to this set,
+                        then the specified value is the computed value.
    @param elementNode   The |Element| for which the value is computed.  If the
                         specified value contains |attr()| function, its value
                         is taken from this node.
@@ -1026,240 +1019,250 @@ function (namespaceURI, localName, value) {
 cx.fam.suika.y2005.CSS.Property.Definition.prototype.setComputedValue =
 function (namespaceURI, prefix, localName, parentPropSet, propSet, value,
           elementNode) {
-  switch (val.getTypeURI ()) {
+  switch (value.getTypeURI ()) {
   case "tag:manakai@suika.fam.cx,2005-11:IDENT":
-    switch (val.getExpandedURI ()) {
+    switch (value.getExpandedURI ()) {
     case "urn:x-suika-fam-cx:css:inherit":
       /* CSS2 |inherit| value */
       if (parentPropSet != null) {
         propSet.setPropertyValueNS (namespaceURI, prefix, localName,
                                     parentPropSet.getSpecifiedPropertyValueNS
                                       (namespaceURI, localName));
-        return /* OK */;
+      } else {
+        propSet.setPropertyValueNS (namespaceURI, prefix, localName,
+                                    this.initialValue);
       }
-      break;
+      return /* OK */;
     case "http://suika.fam.cx/~wakaba/archive/2005/cssc.initial":
     case "urn:x-suika-fam-cx:css:-moz-initial":
       /* CSS3 |initial| value */
-      break;
+      propSet.setPropertyValueNS (namespaceURI, prefix, localName, this.initialValue);
+      return /* OK */;
     }
     break;
   }
-  propSet.setPropertyValueNS (namespaceURI, prefix, localName, this.initialValue);
+  /* unchange */
 };
 
+
 /**
-   A template for property definitions.
+   Class |CSS.Property.Definition_Keyword|
+   
+   The definition for a property that only allows a set of one keywords.
 */
-cx.fam.suika.y2005.CSS.Property._PropImpl = function (v) {
-  this._AllowedKeyword = [];
-  this._AllowedKeyword["urn:x-suika-fam-cx:css:"] = {
-    inherit: true,
-    "-moz-initial": true
-  };
-  this._AllowedKeyword["http://suika.fam.cx/~wakaba/archive/2005/cssc."] = {
-    initial: true
-  };
-  this._AllowedFunction = {};
-  for (var i in v) {
-    switch (i) {
-    case "allowedKeyword":
-      while (true) {
-        var ns = v[i].shift ();
-        var lns = v[i].shift ();
-        if (lns == null) break;
-        if (!this._AllowedKeyword[ns]) this._AllowedKeyword[ns] = [];
-        for (var j in lns) {
-          this._AllowedKeyword[ns][lns[j]] = true;
-        }
-      }
-      break;
-    case "allowedFunction":
-      while (true) {
-        var ns = v[i].shift ();
-        var lns = v[i].shift ();
-        if (lns == null) break;
-        if (!this._AllowedFunction[ns]) this._AllowedFunction[ns] = [];
-        for (var j in lns) {
-          this._AllowedFunction[ns][lns[j]] = true;
-        }
-      }
-      break;
-    default:
-      this[i] = v[i];
-    }
+cx.fam.suika.y2005.CSS.Property.Definition_Keyword = function (template) {
+  cx.fam.suika.y2005.CSS.Property.Definition_Keyword._superclass.apply
+    (this, [template]);
+};
+cx.fam.suika.y2005.CSS.Property.Definition_Keyword.inherits
+  (cx.fam.suika.y2005.CSS.Property.Definition);
+
+cx.fam.suika.y2005.CSS.Property.Definition_Keyword.prototype.parseValueFromTokens =
+function (parser, namespaceURI, prefix, localName) {
+  var value = parser._GetNextValue ();
+  if (value == null) return null;
+  switch (value.getTypeURI ()) {
+  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    return value;
   }
-  if (typeof (this.prefix) == "undefined") this.prefix = null;
+  return null;
 };
 
-/**
-   Converts cascaded value into a set of specified values.
-*/
-cx.fam.suika.y2005.CSS.Property._PropImpl.prototype.setSpecifiedValues =
-function (ns, pfx, ln, prop, propset) {
-  /* as is */
-  propset.setPropertyValueNS (ns, pfx, ln, prop.getPropertyValue ());
+cx.fam.suika.y2005.CSS.Property.Definition_Keyword.prototype.isValidValue =
+function (namespaceURI, localName, value, partial) {
+  switch (value.getTypeURI ()) {
+  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    return (this.validKeyword[value.getExpandedURI ()] ||
+            (!partial && this.validKeyword1[value.getExpandedURI ()]));
+    break;
+  }
+  return false;
 };
 
-/**
-   Converts specified value into computed value.
-*/
-cx.fam.suika.y2005.CSS.Property._PropImpl.prototype.setComputedValue =
-function (ns, pfx, ln, val, propSet, parentPropSet) {
-  // no action
-};
 
 /**
-   A template for property definitions that only allows one keyword.
+   Class |CSS.Property.Definition_Length|
+   
+   The definition for a property that only allows one <length>
+   or other dimension.
 */
-cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword = function () {
-  cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword._superclass.apply
-    (this, arguments);
+cx.fam.suika.y2005.CSS.Property.Definition_Length = function (template) {
+  cx.fam.suika.y2005.CSS.Property.Definition_Length._superclass.apply
+    (this, [template]);
+  if (this.validType["tag:manakai@suika.fam.cx,2005-11:length"]) {
+    this.validUnit["urn:x-suika-fam-cx:css:em"] = true;
+    this.validUnit["urn:x-suika-fam-cx:css:px"] = true;
+    this.validUnit["urn:x-suika-fam-cx:css:vw"] = true;
+    this.validUnit["urn:x-suika-fam-cx:css:vh"] = true;
+    this.validUnit["urn:x-suika-fam-cx:css:vm"] = true;
+    this.validUnit["urn:x-suika-fam-cx:css:in"] = true;
+    this.validUnit["urn:x-suika-fam-cx:css:cm"] = true;
+    this.validUnit["urn:x-suika-fam-cx:css:mm"] = true;
+    this.validUnit["urn:x-suika-fam-cx:css:pt"] = true;
+    this.validUnit["urn:x-suika-fam-cx:css:pc"] = true;
+    this.validUnit["urn:x-suika-fam-cx:css:gd"] = true;
+    this.validUnit["urn:x-suika-fam-cx:css:rem"] = true;
+    this.validUnit["urn:x-suika-fam-cx:css:ex"] = true;
+  }
 };
-cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword.inherits
-  (cx.fam.suika.y2005.CSS.Property._PropImpl);
+cx.fam.suika.y2005.CSS.Property.Definition_Length.inherits
+  (cx.fam.suika.y2005.CSS.Property.Definition);
 
 /**
-   Template for |parsePropertyValue| property for properties that only
-   allows a set of one keywords.
+   Whether negative values are allowed or not.
 */
-cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword.prototype.parsePropertyValue =
-function (block, prop) {
-  var val = this._GetNextValue ();
-  if (val == null) return false;
-  if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-    var im = this._GetPriority ();
-    if (im) {
-      var p = this._Factory.createCSSPropertyNS
-                  (prop.namespaceURI, prop.prefix, prop.localName, val);
-      p.setPriority (im);
-      block.appendPropertyNode (p);
+cx.fam.suika.y2005.CSS.Property.Definition_Length.prototype.negativeNotAllowed = false;
+
+cx.fam.suika.y2005.CSS.Property.Definition_Length.prototype.parseValueFromTokens =
+function (parser, namespaceURI, prefix, localName) {
+  var value = parser._GetNextValue ();
+  if (value == null) return null;
+  switch (value.getTypeURI ()) {
+  case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
+  case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
+  case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    return value;
+  }
+  return null;
+};
+
+cx.fam.suika.y2005.CSS.Property.Definition_Length.prototype.isValidValue =
+function (namespaceURI, localName, value, partial) {
+  switch (value.getTypeURI ()) {
+  case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
+    if (this.negativeNotAllowed) {
+      if (value.getValue () < 0) return false;
+    }
+    return this.validUnit[value.getUnitExpandedURI ()];
+  case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
+    if (this.negativeNotAllowed) {
+      if (value.getValue () < 0) return false;
+    }
+    return this.validType["tag:manakai@suika.fam.cx,2005-11:percentage"];
+  case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+    if (this.negativeNotAllowed) {
+      if (value.getValue () < 0) return false;
+    }
+    if (this.validType["tag:manakai@suika.fam.cx,2005-11:number"]) return true;
+    if (this.validType["tag:manakai@suika.fam.cx,2005-11:integer"] &&
+        value.getValue () % 1 == 0) return true;
+    if (this.validUnit["urn:x-suika-fam-cx:css:px"] && value.getValue () == 0) {
       return true;
     }
-  } /* val */
-};
-
-/**
-   Template for |setSpecifiedValues| method that if a keyword from a specific
-   is the value then it is set as the cascaded value.
-*/
-cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword.prototype.setSpecifiedValues =
-function (ns, pfx, ln, prop, propset) {
-  var val = prop.getPropertyValue ();
-  if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-    var valns = val.getNamespaceURI ();
-    if (this._AllowedKeyword[valns]) {
-      if (this._AllowedKeyword[valns][val.getLocalName ()]) {
-        propset.setPropertyValueNS (ns, pfx, ln, val);
-      }
-    }
+    return false;
+  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    return (this.validKeyword[value.getExpandedURI ()] ||
+            (!partial && this.validKeyword1[value.getExpandedURI ()]));
   }
+  return false;
 };
 
-
-/**
-   A template for property definitions that allows a length.
-*/
-cx.fam.suika.y2005.CSS.Property._PropImpl_Length = function () {
-  cx.fam.suika.y2005.CSS.Property._PropImpl_Length._superclass.apply
-    (this, arguments);
-};
-cx.fam.suika.y2005.CSS.Property._PropImpl_Length.inherits
-  (cx.fam.suika.y2005.CSS.Property._PropImpl);
-
-cx.fam.suika.y2005.CSS.Property._PropImpl_Length.prototype.parsePropertyValue =
-function (block, prop, propDef) {
-  var val = this._GetNextValue ();
-  if (val == null) return false;
-  var valtype = val.getCSSValueType ();
-  if (val.matchTypeURI ("tag:manakai@suika.fam.cx,2005-11:length-or-percentage") ||
-      val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" ||
-      (propDef._NumberAllowed &&
-       val.matchTypeURI ("tag:manakai@suika.fam.cx,2005-11:number"))) {
-    var im = this._GetPriority ();
-    if (im) {
-      var p = this._Factory.createCSSPropertyNS
-                  (prop.namespaceURI, prop.prefix, prop.localName, val);
-      p.setPriority (im);
-      block.appendPropertyNode (p);
-      return true;
-    }
-  }
-};
-
-cx.fam.suika.y2005.CSS.Property._PropImpl_Length.prototype.setSpecifiedValues =
-function (ns, pfx, ln, prop, propSet) {
-  var val = prop.getPropertyValue ();
-  if (val.matchTypeURI ("tag:manakai@suika.fam.cx,2005-11:length-or-percentage")) {
-    switch (val.getUnitExpandedURI ()) {
-    case "urn:x-suika-fam-cx:css:em":
-      /* TODO */
-      if (!this._NegativeNotAllowed || val.getValue () >= 0) {
-        propSet.setPropertyValueNS (ns, pfx, ln, val);
-      }
-      return;
-    case "urn:x-suika-fam-cx:css:px":
-    case "urn:x-suika-fam-cx:css:vw":
-    case "urn:x-suika-fam-cx:css:vh":
-    case "urn:x-suika-fam-cx:css:vm":
-    case "urn:x-suika-fam-cx:css:in":
-    case "urn:x-suika-fam-cx:css:cm":
-    case "urn:x-suika-fam-cx:css:mm":
-    case "urn:x-suika-fam-cx:css:pt":
-    case "urn:x-suika-fam-cx:css:pc":
-      if (!this._NegativeNotAllowed || val.getValue () >= 0) {
-        propSet.setPropertyValueNS (ns, pfx, ln, val);
-      }
-      return;
-    case "urn:x-suika-fam-cx:css:gd":
-    case "urn:x-suika-fam-cx:css:rem":
-    case "urn:x-suika-fam-cx:css:ex":
-      /* TODO */
-      if (!this._NegativeNotAllowed || val.getValue () >= 0) {
-        propSet.setPropertyValueNS (ns, pfx, ln, val);
-      }
-      return;
-    case "%":
-      if (!this._NegativeNotAllowed || val.getValue () >= 0) {
-        propSet.setPropertyValueNS (ns, pfx, ln, val);
-      }
-      return;
-    case null: /* zero */
-      if (!this._NegativeNotAllowed || val.getValue () >= 0) {
-        propSet.setPropertyValueNS (ns, pfx, ln, val);
-      }
-      return;
-    default:
-    }
-  } else if (this._NumberAllowed &&
-             val.matchTypeURI ("tag:manakai@suika.fam.cx,2005-11:number")) {
-    if (!this._NegativeNotAllowed || val.getValue () >= 0) {
-      propSet.setPropertyValueNS (ns, pfx, ln, val);
-    }
+cx.fam.suika.y2005.CSS.Property.Definition_Length.prototype.setComputedValue =
+function (namespaceURI, prefix, localName, parentPropSet, propSet, value,
+          elementNode) {
+  switch (value.getTypeURI ()) {
+  case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
+    /* TODO: resolve relative length */
+    break;
+  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    cx.fam.suika.y2005.CSS.Property.Definition_Length._super.setComputedValue.apply
+      (this, arguments);
     return;
-  } else if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-    var valns = val.getNamespaceURI ();
-    if (this._AllowedKeyword[valns]) {
-      if (this._AllowedKeyword[valns][val.getLocalName ()]) {
-        propSet.setPropertyValueNS (ns, pfx, ln, val);
-      }
-    }
-  } /* val */
+  }
+  /* unchange */
 };
 
 
 /**
-   A template for property definitions that allows a color.
+   Class |CSS.Property.Definition_Length4|
+   
+   The definition for a property that only allows one, two, three, or four <length>
+   or other dimensions.
 */
-cx.fam.suika.y2005.CSS.Property._PropImpl_Color = function () {
-  cx.fam.suika.y2005.CSS.Property._PropImpl_Color._superclass.apply
-    (this, arguments);
-  this._AllowedFunction["urn:x-suika-fam-cx:css:"] = {
-    rgb: true,
-    rgba: true,
-    hsl: true,
-    hsla: true
-  };
+cx.fam.suika.y2005.CSS.Property.Definition_Length4 = function (template) {
+  cx.fam.suika.y2005.CSS.Property.Definition_Length4._superclass.apply
+    (this, [template]);
+};
+cx.fam.suika.y2005.CSS.Property.Definition_Length4.inherits
+  (cx.fam.suika.y2005.CSS.Property.Definition_Length);
+
+cx.fam.suika.y2005.CSS.Property.Definition_Length4.prototype.parseValueFromTokens =
+function (parser, namespaceURI, prefix, localName) {
+  var value = parser._GetNextValue ();
+  if (value == null) return null;
+  switch (value.getTypeURI ()) {
+  case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
+  case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
+  case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    var values = [value, value, value, value];
+    break;
+  default:
+    return null;
+  }
+  
+  value = parser._GetNextValue ();
+  if (value == null) return values;
+  switch (value.getTypeURI ()) {
+  case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
+  case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
+  case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    values[1] = value;
+    values[3] = value;
+    break;
+  default:
+    return null;
+  }
+  
+  value = parser._GetNextValue ();
+  if (value == null) return values;
+  switch (value.getTypeURI ()) {
+  case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
+  case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
+  case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    values[2] = value;
+    break;
+  default:
+    return null;
+  }
+  
+  value = parser._GetNextValue ();
+  if (value == null) return values;
+  switch (value.getTypeURI ()) {
+  case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
+  case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
+  case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    values[3] = value;
+    return values;
+  default:
+    return null;
+  }
+};
+
+cx.fam.suika.y2005.CSS.Property.Definition_Length4.prototype.isValidValue =
+function (namespaceURI, localName, value) {
+  return false;
+};
+
+/* |setDeclaredValue| method must be defined for each property. */
+
+
+/**
+   Class |CSS.Property.Definition_Color|
+   
+   The definition for a property that only allows one <color>.
+*/
+cx.fam.suika.y2005.CSS.Property.Definition_Color = function (template) {
+  cx.fam.suika.y2005.CSS.Property.Definition_Color._superclass.apply
+    (this, [template]);
+  this.validFunction["urn:x-suika-fam-cx:css:rgb"] = true;
+  this.validFunction["urn:x-suika-fam-cx:css:rgba"] = true;
+  this.validFunction["urn:x-suika-fam-cx:css:hsl"] = true;
+  this.validFunction["urn:x-suika-fam-cx:css:hsla"] = true;
   var kwd = [
     /* X11 color keywords */
     "aliceblue", "antiquewhite", "aqua", "aquamarine", "azure", "beige", 
@@ -1307,242 +1310,153 @@ cx.fam.suika.y2005.CSS.Property._PropImpl_Color = function () {
     "flavor"
   ];
   for (var i in kwd) {
-    this._AllowedKeyword["urn:x-suika-fam-cx:css:"][kwd[i]] = true;
+    this.validKeyword["urn:x-suika-fam-cx:css:" + kwd[i]] = true;
   }
+  this.validKeyword
+    ["http://suika.fam.cx/~wakaba/archive/2005/cssc.user-agent-dependent"] = true;
 };
-cx.fam.suika.y2005.CSS.Property._PropImpl_Color.inherits
-  (cx.fam.suika.y2005.CSS.Property._PropImpl);
+cx.fam.suika.y2005.CSS.Property.Definition_Color.inherits
+  (cx.fam.suika.y2005.CSS.Property.Definition);
 
-cx.fam.suika.y2005.CSS.Property._PropImpl_Color.prototype.parsePropertyValue =
-function (block, prop, propDef) {
-  var val = this._GetNextValue ();
-  if (val == null) return false;
-  var valtype = val.getCSSValueType ();
-  if (val.matchTypeURI ("tag:manakai@suika.fam.cx,2005-11:color") ||
-      val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-    if (prop.namespaceURI == "urn:x-suika-fam-cx:css:" &&
-        prop.localName == "color" &&
-        val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-        val.getExpandedURI () == "urn:x-suika-fam-cx:css:currentcolor") {
-      val = new cx.fam.suika.y2005.CSS.Value.IdentValue
-              ("urn:x-suika-fam-cx:css:", null, "inherit");
-    }
-    var im = this._GetPriority ();
-    if (im) {
-      var p = this._Factory.createCSSPropertyNS
-                  (prop.namespaceURI, prop.prefix, prop.localName, val);
-      p.setPriority (im);
-      block.appendPropertyNode (p);
+cx.fam.suika.y2005.CSS.Property.Definition_Color.prototype.parseValueFromTokens =
+function (parser, namespaceURI, prefix, localName) {
+  var value = parser._GetNextValue ();
+  if (value == null) return null;
+  switch (value.getTypeURI ()) {
+  case "tag:manakai@suika.fam.cx,2005-11:FUNCTION":
+  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    return value;
+  }
+  return null;
+};
+
+cx.fam.suika.y2005.CSS.Property.Definition_Color.prototype.isValidValue =
+function (namespaceURI, localName, value, partial) {
+  switch (value.getTypeURI ()) {
+  case "tag:manakai@suika.fam.cx,2005-11:FUNCTION":
+    switch (value.getFunctionExpandedURI ()) {
+    case "urn:x-suika-fam-cx:css:rgb":
+      var red = value.getRed ();
+      switch (red.getTypeURI ()) {
+      case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+        red = red.getValue ();
+        if (red < 0 || red > 255) break;
+        var green = value.getGreen ();
+        if (green.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:NUMBER") break;
+        green = green.getValue ();
+        if (green < 0 || green > 255) break;
+        var blue = value.getBlue ();
+        if (blue.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:NUMBER") break;
+        blue = blue.getValue ();
+        if (blue < 0 || blue > 255) break;
+        return true;
+      case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
+        red = red.getValue ();
+        if (red < 0 || red > 100) break;
+        var green = value.getGreen ();
+        if (green.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE")break;
+        green = green.getValue ();
+        if (green < 0 || green > 100) break;
+        var blue = value.getBlue ();
+        if (blue.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE") break;
+        blue = blue.getValue ();
+        if (blue < 0 || blue > 100) break;
+        return true;
+      }
+      break;
+    case "urn:x-suika-fam-cx:css:rgba":
+      var red = value.getRed ();
+      switch (red.getTypeURI ()) {
+      case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+        red = red.getValue ();
+        if (red < 0 || red > 255) break;
+        var green = value.getGreen ();
+        if (green.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:NUMBER") break;
+        green = green.getValue ();
+        if (green < 0 || green > 255) break;
+        var blue = value.getBlue ();
+        if (blue.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:NUMBER") break;
+        blue = blue.getValue ();
+        if (blue < 0 || blue > 255) break;
+        var alpha = value.getAlpha ();
+        if (alpha.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:NUMBER") break;
+        return true;
+      case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
+        red = red.getValue ();
+        if (red < 0 || red > 100) break;
+        var green = value.getGreen ();
+        if (green.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE")break;
+        green = green.getValue ();
+        if (green < 0 || green > 100) break;
+        var blue = value.getBlue ();
+        if (blue.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE") break;
+        blue = blue.getValue ();
+        if (blue < 0 || blue > 100) break;
+        var alpha = value.getAlpha ();
+        if (alpha.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:NUMBER") break;
+        return true;
+      }
+      break;
+    case "urn:x-suika-fam-cx:css:hsl":
+      var s = value.getSaturation ();
+      if (s.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE") break;
+      s = s.getValue ();
+      if (s < 0 || s > 100) break;
+      var l = value.getLightness ();
+      if (l.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE") break;
+      l = l.getValue ();
+      if (l < 0 || l > 100) break;
+      return true;
+    case "urn:x-suika-fam-cx:css:hsla":
+      var s = value.getSaturation ();
+      if (s.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE") break;
+      s = s.getValue ();
+      if (s < 0 || s > 100) break;
+      var l = value.getLightness ();
+      if (l.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE") break;
+      l = l.getValue ();
+      if (l < 0 || l > 100) break;
+      var alpha = value.getAlpha ();
+      if (alpha.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:NUMBER") break;
       return true;
     }
+    break;
+  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    return (this.validKeyword[value.getExpandedURI ()] ||
+            (!partial && this.validKeyword1[value.getExpandedURI ()]));
   }
+  return false;
 };
 
-cx.fam.suika.y2005.CSS.Property._PropImpl_Color.prototype.setSpecifiedValues =
-function (ns, pfx, ln, prop, propSet) {
-  var val = prop.getPropertyValue ();
-  val = this._GetSpecifiedValue (ns, pfx, ln, prop, propSet, val);
-  if (val != null) {
-    propSet.setPropertyValueNS (ns, pfx, ln, val);
-  }
-};
-
-cx.fam.suika.y2005.CSS.Property._PropImpl_Color.prototype._GetSpecifiedValue =
-function (ns, pfx, ln, prop, propSet, val) {
-  if (!val) return null;
-  if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:FUNCTION") {
-    var fns = val.getFunctionNamespaceURI ();
-    var fln = val.getFunctionLocalName ();
-    if (this._AllowedFunction[fns] && this._AllowedFunction[fns][fln]) {
-      switch (fns + fln) {
-      case "urn:x-suika-fam-cx:css:rgb":
-        var red = val.getRed ();
-        var redv = red.getValue ();
-        switch (red.getTypeURI ()) {
-        case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
-          if (redv < 0 || redv > 255 || redv % 1 != 0) {
-            return;
-          }
-          break;
-        case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
-          if (redv < 0 || redv > 100) {
-            return;
-          }
-          break;
-        default: return;
-        }
-        var green = val.getRed ();
-        var greenv = green.getValue ();
-        switch (green.getTypeURI ()) {
-        case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
-          if (greenv < 0 || greenv > 255 || greenv % 1 != 0) {
-            return;
-          }
-          break;
-        case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
-          if (greenv < 0 || greenv > 100) {
-            return;
-          }
-          break;
-        default: return;
-        }
-        var blue = val.getRed ();
-        var bluev = green.getValue ();
-        switch (blue.getTypeURI ()) {
-        case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
-          if (bluev < 0 || bluev > 255 || bluev % 1 != 0) {
-            return;
-          }
-          break;
-        case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
-          if (bluev < 0 || bluev > 100) {
-            return;
-          }
-          break;
-        default: return;
-        }
-        break;
-      case "urn:x-suika-fam-cx:css:rgba":
-        var red = val.getRed ();
-        var redv = red.getValue ();
-        switch (red.getTypeURI ()) {
-        case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
-          if (redv < 0 || redv > 255 || redv % 1 != 0) {
-            return;
-          }
-          break;
-        case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
-          if (redv < 0 || redv > 100) {
-            return;
-          }
-          break;
-        default: return;
-        }
-        var green = val.getRed ();
-        var greenv = green.getValue ();
-        switch (green.getTypeURI ()) {
-        case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
-          if (greenv < 0 || greenv > 255 || greenv % 1 != 0) {
-            return;
-          }
-          break;
-        case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
-          if (greenv < 0 || greenv > 100) {
-            return;
-          }
-          break;
-        default: return;
-        }
-        var blue = val.getRed ();
-        var bluev = green.getValue ();
-        switch (blue.getTypeURI ()) {
-        case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
-          if (bluev < 0 || bluev > 255 || bluev % 1 != 0) {
-            return;
-          }
-          break;
-        case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
-          if (bluev < 0 || bluev > 100) {
-            return;
-          }
-          break;
-        default: return;
-        }
-        var alpha = val.getAlpha ();
-        switch (alpha.getTypeURI ()) {
-        case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
-          break;
-          /* TODO: check whether the media support the alphavalue */
-        default: return;
-        }
-        break;
-      case "urn:x-suika-fam-cx:css:hsl":
-        var hue = val.getHue ();
-        var saturation = val.getSaturation ();
-        var lightness = val.getLightness ();
-        switch (hue.getTypeURI ()) {
-        case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
-          val = new cx.fam.suika.y2005.CSS.Value.HSLValue
-                  (new cx.fam.suika.y2005.CSS.Value.NumericValue
-                     (hue.getValue () % 360, null, null, null),
-                   saturation, lightness);
-          break;
-        default: return;
-        }
-        switch (saturation.getTypeURI ()) {
-        case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
-          var sv = saturation.getValue ();
-          if (sv < 0 || sv > 100) {
-            return;
-          }
-          break;
-        default: return;
-        }
-        switch (lightness.getTypeURI ()) {
-        case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
-          var lv = lightness.getValue ();
-          if (lv < 0 || lv > 100) {
-            return;
-          }
-          break;
-        default: return;
-        }
-        break;
-      case "urn:x-suika-fam-cx:css:hsla":
-        var hue = val.getHue ();
-        var saturation = val.getSaturation ();
-        var lightness = val.getLightness ();
-        var alpha = val.getAlpha ();
-        switch (hue.getTypeURI ()) {
-        case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
-          val = new cx.fam.suika.y2005.CSS.Value.HSLAValue
-                  (new cx.fam.suika.y2005.CSS.Value.NumericValue
-                     (hue.getValue () % 360, null, null, null),
-                   saturation, lightness, alpha);
-          break;
-        default: return;
-        }
-        switch (saturation.getTypeURI ()) {
-        case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
-          var sv = saturation.getValue ();
-          if (sv < 0 || sv > 100) {
-            return;
-          }
-          break;
-        default: return;
-        }
-        switch (lightness.getTypeURI ()) {
-        case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
-          var lv = lightness.getValue ();
-          if (lv < 0 || lv > 100) {
-            return;
-          }
-          break;
-        default: return;
-        }
-        switch (alpha.getTypeURI ()) {
-        case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
-          break;
-          /* TODO: check whether the media support the alphavalue */
-        default: return;
-        }
-        break;
-      } /* function */
-      return val;
-    }
-  } else if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-    var valns = val.getNamespaceURI ();
-    if (this._AllowedKeyword[valns]) {
-      if (this._AllowedKeyword[valns][val.getLocalName ()]) {
-        return val;
+cx.fam.suika.y2005.CSS.Property.Definition_Color.prototype.setComputedValue =
+function (namespaceURI, prefix, localName, parentPropSet, propSet, value,
+          elementNode) {
+  switch (value.getTypeURI ()) {
+  case "tag:manakai@suika.fam.cx,2005-11:FUNCTION":
+    switch (value.getFunctionExpandedURI ()) {
+    case "urn:x-suika-fam-cx:css:rgba":
+      var normalized = value.getNormalizedValue ();
+      if (value != normalized) {
+        propSet.setPropertyValueNS (namespaceURI, prefix, localName, normalized);
       }
+      break;
+    /*
+       Although CSS3 color CR defines computed value for |hsl| and |hsla|
+       as same as specified value, this implementation converts them
+       into |rgb| or |rgba| for convinience.
+    */
+    case "urn:x-suika-fam-cx:css:hsl":
+      propSet.setPropertyValueNS (namespaceURI, prefix, localName,
+                                  value.getRGBValue ());
+      break;
+    case "urn:x-suika-fam-cx:css:hsla":
+      propSet.setPropertyValueNS (namespaceURI, prefix, localName,
+                                  value.getRGBAValue ().getNormalizedValue ());
+      break;
     }
-  } /* val */
-};
-
-cx.fam.suika.y2005.CSS.Property._PropImpl_Color.prototype.setComputedValue =
-function (ns, pfx, ln, val, propSet, parentPropSet) {
-  if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
+    return;
+  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    var xuri = value.getExpandedURI ();
     var rgb = {
       /* so-called X11 colors including HTML4 colors [SVG, CSS3 Color CR] */
       "urn:x-suika-fam-cx:css:aliceblue":	[0xf0, 0xf8, 0xff],
@@ -1694,1843 +1608,986 @@ function (ns, pfx, ln, val, propSet, parentPropSet) {
       "urn:x-suika-fam-cx:css:yellowgreen":	[0x9a, 0xcd, 0x32],
       
       "urn:x-suika-fam-cx:css:transparent":	[0, 0, 0, 0]
-    }[val.getExpandedURI ()];
+    }[xuri];
     if (rgb) {
       if (rgb.length == 3) {
         propSet.setPropertyValueNS
-          (ns, pfx, ln,
+          (namespaceURI, prefix, localName,
            new cx.fam.suika.y2005.CSS.Value.RGBValue
              (new cx.fam.suika.y2005.CSS.Value.NumericValue (rgb[0], null, null, null),
               new cx.fam.suika.y2005.CSS.Value.NumericValue (rgb[1], null, null, null),
               new cx.fam.suika.y2005.CSS.Value.NumericValue (rgb[2], null, null, null)));
       } else if (rgb.length == 4) {
         propSet.setPropertyValueNS
-          (ns, pfx, ln,
+          (namespaceURI, prefix, localName,
            new cx.fam.suika.y2005.CSS.Value.RGBAValue
              (new cx.fam.suika.y2005.CSS.Value.NumericValue (rgb[0], null, null, null),
               new cx.fam.suika.y2005.CSS.Value.NumericValue (rgb[1], null, null, null),
               new cx.fam.suika.y2005.CSS.Value.NumericValue (rgb[2], null, null, null),
               new cx.fam.suika.y2005.CSS.Value.NumericValue (rgb[3], null, null, null)));
       }
-    } else if (val.getExpandedURI () == "urn:x-suika-fam-cx:css:currentcolor") {
-      var colorVal = propSet.getSpecifiedPropertyValueNS
-                       ("urn:x-suika-fam-cx:css:", "color");
-      propSet.setPropertyValueNS (ns, pfx, ln, colorVal);
+      return;
     }
-  } else if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:FUNCTION") {
-    /*
-       Although CSS3 color CR defines computed value for |hsl| and |hsla|
-       as same as specified value, this implementation converts them
-       into |rgb| or |rgba| for convinience.
-    */
-    var hue2rgb = function (m1, m2, h) {
-      h = h < 0 ? h + 1 : h > 1 ? h - 1 : h;
-      if (h * 6 < 1) {
-        return m1 + (m2 - m1) * h * 6;
-      } else if (h * 2 < 1) {
-        return m2;
-      } else if (h * 3 < 2) {
-        return m1 + (m2 - m1) * (2/3 - h) * 6;
-      } else {
-        return m1;
-      }
-    };
-    switch (val.getFunctionExpandedURI ()) {
-    case "urn:x-suika-fam-cx:css:rgba":
-      var alpha = val.getAlpha ();
-      var alphav = alpha.getValue ();
-      if (alphav < 0) {
-        propSet.setPropertyValueNS
-          (ns, pfx, ln, 
-           new cx.fam.suika.y2005.CSS.Value.RGBAValue
-             (val.getRed (), val.getGreen (), val.getBlue (), 
-              new cx.fam.suika.y2005.CSS.Value.NumericValue
-                (0, null, null, null)));
-      } else if (alphav > 1) {
-        propSet.setPropertyValueNS
-          (ns, pfx, ln, 
-           new cx.fam.suika.y2005.CSS.Value.RGBAValue
-             (val.getRed (), val.getGreen (), val.getBlue (), 
-              new cx.fam.suika.y2005.CSS.Value.NumericValue
-                (1, null, null, null)));
-      }
-      break;
-    case "urn:x-suika-fam-cx:css:hsl":
-      var h = val.getHue ().getValue () / 360;
-      var s = val.getSaturation ().getValue () * 0.01;
-      var l = val.getLightness ().getValue () * 0.01;
-      var m2 = l <= 0.5 ? l * (s + 1) : l + s - l * s;
-      var m1 = l * 2 - m2;
+    if (xuri == "urn:x-suika-fam-cx:css:currentcolor") {
       propSet.setPropertyValueNS
-          (ns, pfx, ln,
-           new cx.fam.suika.y2005.CSS.Value.RGBValue
-             (new cx.fam.suika.y2005.CSS.Value.NumericValue
-                (Math.floor (hue2rgb (m1, m2, h + 1/3) * 255), null, null, null),
-              new cx.fam.suika.y2005.CSS.Value.NumericValue
-                (Math.floor (hue2rgb (m1, m2, h      ) * 255), null, null, null),
-              new cx.fam.suika.y2005.CSS.Value.NumericValue
-                (Math.floor (hue2rgb (m1, m2, h - 1/3) * 255), null, null, null)));
-      break;
-    case "urn:x-suika-fam-cx:css:hsla":
-      var h = val.getHue ().getValue ();
-      var s = val.getSaturation ().getValue () * 0.01;
-      var l = val.getLightness ().getValue () * 0.01;
-      var m2 = l <= 0.5 ? l * (s + 1) : l + s - l * s;
-      var m1 = l * 2 - m2;
-      var alpha = val.getAlpha ();
-      var alphav = alpha.getValue ();
-      if (alphav < 0) {
-        alpha = new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null);
-      } else if (alphav > 1) {
-        alpha = new cx.fam.suika.y2005.CSS.Value.NumericValue (1, null, null, null);
-      }
-      propSet.setPropertyValueNS
-          (ns, pfx, ln,
-           new cx.fam.suika.y2005.CSS.Value.RGBAValue
-             (new cx.fam.suika.y2005.CSS.Value.NumericValue
-                (Math.floor (hue2rgb (m1, m2, h + 1/3) * 255), null, null, null),
-              new cx.fam.suika.y2005.CSS.Value.NumericValue
-                (Math.floor (hue2rgb (m1, m2, h      ) * 255), null, null, null),
-              new cx.fam.suika.y2005.CSS.Value.NumericValue
-                (Math.floor (hue2rgb (m1, m2, h - 1/3) * 255), null, null, null),
-              alpha));
-      break;
+        (namespaceURI, prefix, localName,
+         propSet.getSpecifiedPropertyValueNS ("urn:x-suika-fam-cx:css:", "color"));
     }
+    cx.fam.suika.y2005.CSS.Property.Definition_Length._super.setComputedValue.apply
+      (this, arguments);
+    return;
+  }
+  /* unchange */
+};
+
+/**
+   Class |CSS.Property.Definition_Color4|
+   
+   The definition for a property that only allows one, two, three, or four <color>s.
+*/
+cx.fam.suika.y2005.CSS.Property.Definition_Color4 = function (template) {
+  cx.fam.suika.y2005.CSS.Property.Definition_Color4._superclass.apply
+    (this, [template]);
+};
+cx.fam.suika.y2005.CSS.Property.Definition_Color4.inherits
+  (cx.fam.suika.y2005.CSS.Property.Definition_Color);
+
+cx.fam.suika.y2005.CSS.Property.Definition_Color4.prototype.parseValueFromTokens =
+function (parser, namespaceURI, prefix, localName) {
+  var value = parser._GetNextValue ();
+  if (value == null) return null;
+  switch (value.getTypeURI ()) {
+  case "tag:manakai@suika.fam.cx,2005-11:FUNCTION":
+  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    var values = [value, value, value, value];
+    break;
+  default:
+    return null;
+  }
+  
+  value = parser._GetNextValue ();
+  if (value == null) return values;
+  switch (value.getTypeURI ()) {
+  case "tag:manakai@suika.fam.cx,2005-11:FUNCTION":
+  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    values[1] = value;
+    values[3] = value;
+    break;
+  default:
+    return null;
+  }
+  
+  value = parser._GetNextValue ();
+  if (value == null) return values;
+  switch (value.getTypeURI ()) {
+  case "tag:manakai@suika.fam.cx,2005-11:FUNCTION":
+  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    values[2] = value;
+    break;
+  default:
+    return null;
+  }
+  
+  value = parser._GetNextValue ();
+  if (value == null) return values;
+  switch (value.getTypeURI ()) {
+  case "tag:manakai@suika.fam.cx,2005-11:FUNCTION":
+  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    values[3] = value;
+    return values;
+  default:
+    return null;
   }
 };
 
-/* Actual property definitions */
+cx.fam.suika.y2005.CSS.Property.Definition_Color4.prototype.isValidValue =
+function (namespaceURI, localName, value) {
+  return false;
+};
 
-cx.fam.suika.y2005.CSS.Property._Prop = {};
-cx.fam.suika.y2005.CSS.Property._Prop["urn:x-suika-fam-cx:css:"] = {
-  "border-color": new cx.fam.suika.y2005.CSS.Property._PropImpl_Color ({
-    /* Introduced in CSS1, modified in CSS2 */
-    parsePropertyValue: function (block, prop, propDef) {
-      var val = this._GetNextValue ();
-      if (val == null) return false;
-      if (val.matchTypeURI ("tag:manakai@suika.fam.cx,2005-11:color") ||
-          (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-           propDef._AllowedKeyword[val.getNamespaceURI ()] &&
-           propDef._AllowedKeyword[val.getNamespaceURI ()][val.getLocalName ()])) {
-        var val1 = val;
-        val = this._GetNextValue ();
-        if (val &&
-            (val.matchTypeURI ("tag:manakai@suika.fam.cx,2005-11:color") ||
-             val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT")) {
-          var val2 = val;
-          val = this._GetNextValue ();
-          if (val &&
-              (val.matchTypeURI ("tag:manakai@suika.fam.cx,2005-11:color") ||
-               val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT")) {
-            var val3 = val;
-            val = this._GetNextValue ();
-            if (val &&
-              (val.matchTypeURI ("tag:manakai@suika.fam.cx,2005-11:color") ||
-               val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT")) {
-              var val4 = val;
-            } else if (val) { return }
-          } else if (val) { return }
-        } else if (val) { return }
-        var im = this._GetPriority ();
-        if (im) {
-          val = this._Factory.createCSSValueList ();
-          val.addItem (val1);
-          if (val2) val.addItem (val2);
-          if (val3) val.addItem (val3);
-          if (val4) val.addItem (val4);
-          var p = this._Factory.createCSSPropertyNS
-                      (prop.namespaceURI, prop.prefix, prop.localName, val);
-          p.setPriority (im);
-          block.appendPropertyNode (p);
-          return true;
-        }
-      } else if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-        var im = this._GetPriority ();
-        if (im) {
-          var p = this._Factory.createCSSPropertyNS
-                      (prop.namespaceURI, prop.prefix, prop.localName, val);
-          p.setPriority (im);
-          block.appendPropertyNode (p);
-          return true;
-        }
-      } /* val */
-    },
-    setSpecifiedValues: function (ns, pfx, ln, prop, propSet) {
-      var val = prop.getPropertyValue ();
-      if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:VALUE_LIST") {
-        switch (val.getLength ()) {
-        case 1:
-          var val1 = this._GetSpecifiedValue
-                       (ns, pfx, ln, prop, propSet, val.item (0));
-          if (!val1) break;
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-bottom-color", val1);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-left-color", val1);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-right-color", val1);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-top-color", val1);
-          break;
-        case 2:
-          var val1 = this._GetSpecifiedValue
-                       (ns, pfx, ln, prop, propSet, val.item (0));
-          if (!val1) break;
-          var val2 = this._GetSpecifiedValue
-                       (ns, pfx, ln, prop, propSet, val.item (1));
-          if (!val2) break;
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-bottom-color", val1);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-left-color", val2);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-right-color", val2);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-top-color", val1);
-          break;
-        case 3:
-          var val1 = this._GetSpecifiedValue
-                       (ns, pfx, ln, prop, propSet, val.item (0));
-          if (!val1) break;
-          var val2 = this._GetSpecifiedValue
-                       (ns, pfx, ln, prop, propSet, val.item (1));
-          if (!val2) break;
-          var val3 = this._GetSpecifiedValue
-                       (ns, pfx, ln, prop, propSet, val.item (2));
-          if (!val3) break;
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-bottom-color", val3);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-left-color", val2);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-right-color", val2);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-top-color", val1);
-          break;
-        case 4:
-          var val1 = this._GetSpecifiedValue
-                       (ns, pfx, ln, prop, propSet, val.item (0));
-          if (!val1) break;
-          var val2 = this._GetSpecifiedValue
-                       (ns, pfx, ln, prop, propSet, val.item (1));
-          if (!val2) break;
-          var val3 = this._GetSpecifiedValue
-                       (ns, pfx, ln, prop, propSet, val.item (2));
-          if (!val3) break;
-          var val4 = this._GetSpecifiedValue
-                       (ns, pfx, ln, prop, propSet, val.item (3));
-          if (!val4) break;
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-bottom-color", val3);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-left-color", val4);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-right-color", val2);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-top-color", val1);
-          break;
-        }
-      } else if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-        var valns = val.getNamespaceURI ();
-        if (this._AllowedKeyword[valns]) {
-          if (this._AllowedKeyword[valns][val.getLocalName ()]) {
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-bottom-color", val);
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-left-color", val);
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-right-color", val);
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-top-color", val);
-          }
-        }
-      }
-    }
-  }),
-  "border-bottom-color": new cx.fam.suika.y2005.CSS.Property._PropImpl_Color ({
+/* |setDeclaredValue| method must be defined for each property. */
+
+
+/**
+   Returns a |setDeclaredValue| method implementation for shorthand
+   properties that corresponding to a set of |top|, |right|, |bottom|, and
+   |left| longhand properties.
+*/
+cx.fam.suika.y2005.CSS.Property.setDeclaredValue4 =
+function (propNamespaceURI, propPrefix, propSuffix) {
+  return function (namespaceURI, prefix, localName, propSet, valueSource, priority) {
+    var checker = cx.fam.suika.y2005.CSS.Property.Definition
+                  [propNamespaceURI + propPrefix + "bottom" + propSuffix].isValidValue;
+    if (!checker.apply (this, [namespaceURI, localName, valueSource[0], true]) ||
+        !checker.apply (this, [namespaceURI, localName, valueSource[1], true]) ||
+        !checker.apply (this, [namespaceURI, localName, valueSource[2], true]) ||
+        !checker.apply (this, [namespaceURI, localName, valueSource[3], true])) return;
+    propSet.addPropertyValueNS
+      (propNamespaceURI, null, propPrefix + "top" + propSuffix,
+       valueSource[0], priority);
+    propSet.addPropertyValueNS
+      (propNamespaceURI, null, propPrefix + "right" + propSuffix,
+       valueSource[1], priority);
+    propSet.addPropertyValueNS
+      (propNamespaceURI, null, propPrefix + "bottom" + propSuffix,
+       valueSource[2], priority);
+    propSet.addPropertyValueNS
+      (propNamespaceURI, null, propPrefix + "left" + propSuffix,
+       valueSource[3], priority);
+  };
+};
+
+
+/*
+   Instances of property definitions
+*/
+
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:border-bottom-color"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Color ({
     /* Introduced in CSS1, modified in CSS2, CSS3 border WD */
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
                    ("urn:x-suika-fam-cx:css:", null, "currentcolor")
-  }),
-  "border-bottom-style": new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["dashed", "dotted", "double", "groove",
-                                  "hidden", "inset", "none", "outset", "ridge",
-                                  "solid"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "none")
-  }),
-  "border-bottom-width": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
+});
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:border-bottom-style"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "none"),
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:dashed": true,
+    "urn:x-suika-fam-cx:css:dotted": true,
+    "urn:x-suika-fam-cx:css:double": true,
+    "urn:x-suika-fam-cx:css:groove": true,
+    "urn:x-suika-fam-cx:css:hidden": true,
+    "urn:x-suika-fam-cx:css:inset": true,
+    "urn:x-suika-fam-cx:css:none": true,
+    "urn:x-suika-fam-cx:css:outset": true,
+    "urn:x-suika-fam-cx:css:ridge": true,
+    "urn:x-suika-fam-cx:css:solid": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:border-bottom-width"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Length ({
     /* Introduced in CSS1, modified in CSS2, CSS3 Box model WD */
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["medium", "thick", "thin"]
-    ],
-    /* percentage allowed in CSS3 Box model WD */
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "medium"),
-    _NegativeNotAllowed: true,
-    setComputedValue: function (ns, pfx, ln, val, propSet, parentPropSet) {
-      var bs = propSet.getSpecifiedPropertyValueNS
-                         ("urn:x-suika-fam-cx:css:", "border-bottom-style");
-      switch (bs.getExpandedURI ()) {
-      case "urn:x-suika-fam-cx:css:none":
-      case "urn:x-suika-fam-cx:css:hidden":
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "medium"),
+  negativeNotAllowed: true,
+  setComputedValue: function (namespaceURI, prefix, localName, parentPropSet,
+                              propSet, value, elementNode) {
+    var bs = propSet.getSpecifiedPropertyValueNS
+               ("urn:x-suika-fam-cx:css:", localName.replace ("width", "style"));
+    switch (bs.getExpandedURI ()) {
+    case "urn:x-suika-fam-cx:css:none":
+    case "urn:x-suika-fam-cx:css:hidden":
+      propSet.setPropertyValueNS
+        (namespaceURI, prefix, localName,
+         new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null));
+      return;
+    }
+    
+    switch (value.getTypeURI ()) {
+    case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+      switch (value.getExpandedURI ()) {
+      case "urn:x-suika-fam-cx:css:thin":
+        /* UA dependent */
         propSet.setPropertyValueNS
-            (ns, pfx, ln,
-             new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null));
-        return;
-      }
-      if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-        switch (val.getExpandedURI ()) {
-        case "urn:x-suika-fam-cx:css:thin":
-          /* UA dependent */
-          propSet.setPropertyValueNS
-            (ns, pfx, ln,
-             new cx.fam.suika.y2005.CSS.Value.NumericValue
+          (namespaceURI, prefix, localName,
+           new cx.fam.suika.y2005.CSS.Value.NumericValue
                    (1, "urn:x-suika-fam-cx:css:", null, "px"));
-          break;
-        case "urn:x-suika-fam-cx:css:medium":
-          /* UA dependent */
-          propSet.setPropertyValueNS
-            (ns, pfx, ln,
-             new cx.fam.suika.y2005.CSS.Value.NumericValue
+        return;
+      case "urn:x-suika-fam-cx:css:medium":
+        /* UA dependent */
+        propSet.setPropertyValueNS
+          (namespaceURI, prefix, localName,
+           new cx.fam.suika.y2005.CSS.Value.NumericValue
                    (3, "urn:x-suika-fam-cx:css:", null, "px"));
-          break;
-        case "urn:x-suika-fam-cx:css:thick":
-          /* UA dependent */
-          propSet.setPropertyValueNS
-            (ns, pfx, ln,
-             new cx.fam.suika.y2005.CSS.Value.NumericValue
+        return;
+      case "urn:x-suika-fam-cx:css:thick":
+        /* UA dependent */
+        propSet.setPropertyValueNS
+          (namespaceURI, prefix, localName,
+           new cx.fam.suika.y2005.CSS.Value.NumericValue
                    (5, "urn:x-suika-fam-cx:css:", null, "px"));
-          break;
+        return;
         /* Note.  CSS3 box model WD proposes 1px, 3px, and 5px as a possible choice. */
-        }
       }
     }
-  }),
-  "border-left-color": new cx.fam.suika.y2005.CSS.Property._PropImpl_Color ({
-    /* Introduced in CSS1, modified in CSS2, CSS3 border WD */
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "currentcolor")
-  }),
-  "border-left-style": new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["dashed", "dotted", "double", "groove",
-                                  "hidden", "inset", "none", "outset", "ridge",
-                                  "solid"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "none")
-  }),
-  "border-left-width": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
+    cx.fam.suika.y2005.CSS.Property.Definition_Length.prototype.setComputedValue
+      .apply (this, arguments);
+  },
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:medium": true,
+    "urn:x-suika-fam-cx:css:thick": true,
+    "urn:x-suika-fam-cx:css:thin": true
+  },
+  validType: {
+    "tag:manakai@suika.fam.cx,2005-11:length": true,
+    "tag:manakai@suika.fam.cx,2005-11:percentage": true
+      /* percentage allowed in CSS3 Box model WD */
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:border-color"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Color4 ({
+  isShorthand: true,
+  isValidValue: function () { return false },
+  setDeclaredValue: cx.fam.suika.y2005.CSS.Property.setDeclaredValue4
+                          ("urn:x-suika-fam-cx:css:", "border-", "-color")
+});
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:border-left-color"]
+  = cx.fam.suika.y2005.CSS.Property.Definition
+    ["urn:x-suika-fam-cx:css:border-bottom-color"];
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:border-left-style"]
+  = cx.fam.suika.y2005.CSS.Property.Definition
+    ["urn:x-suika-fam-cx:css:border-bottom-style"];
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:border-left-width"]
+  = cx.fam.suika.y2005.CSS.Property.Definition
+    ["urn:x-suika-fam-cx:css:border-bottom-width"];
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:border-right-color"]
+  = cx.fam.suika.y2005.CSS.Property.Definition
+    ["urn:x-suika-fam-cx:css:border-bottom-color"];
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:border-right-style"]
+  = cx.fam.suika.y2005.CSS.Property.Definition
+    ["urn:x-suika-fam-cx:css:border-bottom-style"];
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:border-right-width"]
+  = cx.fam.suika.y2005.CSS.Property.Definition
+    ["urn:x-suika-fam-cx:css:border-bottom-width"];
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:border-top-color"]
+  = cx.fam.suika.y2005.CSS.Property.Definition
+    ["urn:x-suika-fam-cx:css:border-bottom-color"];
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:border-top-style"]
+  = cx.fam.suika.y2005.CSS.Property.Definition
+    ["urn:x-suika-fam-cx:css:border-bottom-style"];
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:border-top-width"]
+  = cx.fam.suika.y2005.CSS.Property.Definition
+    ["urn:x-suika-fam-cx:css:border-bottom-width"];
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:border-style"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Length4 ({
+  isShorthand: true,
+  isValidValue: function () { return false },
+  setDeclaredValue: cx.fam.suika.y2005.CSS.Property.setDeclaredValue4
+                          ("urn:x-suika-fam-cx:css:", "border-", "-style"),
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:dashed": true,
+    "urn:x-suika-fam-cx:css:dotted": true,
+    "urn:x-suika-fam-cx:css:double": true,
+    "urn:x-suika-fam-cx:css:groove": true,
+    "urn:x-suika-fam-cx:css:hidden": true,
+    "urn:x-suika-fam-cx:css:inset": true,
+    "urn:x-suika-fam-cx:css:none": true,
+    "urn:x-suika-fam-cx:css:outset": true,
+    "urn:x-suika-fam-cx:css:ridge": true,
+    "urn:x-suika-fam-cx:css:solid": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:border-width"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Length4 ({
     /* Introduced in CSS1, modified in CSS2, CSS3 Box model WD */
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["medium", "thick", "thin"]
-    ],
-    /* percentage allowed in CSS3 Box model WD */
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "medium"),
-    _NegativeNotAllowed: true,
-    setComputedValue: function (ns, pfx, ln, val, propSet, parentPropSet) {
-      var bs = propSet.getSpecifiedPropertyValueNS
-                         ("urn:x-suika-fam-cx:css:", "border-left-style");
-      switch (bs.getExpandedURI ()) {
-      case "urn:x-suika-fam-cx:css:none":
-      case "urn:x-suika-fam-cx:css:hidden":
-        propSet.setPropertyValueNS
-            (ns, pfx, ln,
-             new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null));
-        return;
-      }
-      if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-        switch (val.getExpandedURI ()) {
-        case "urn:x-suika-fam-cx:css:thin":
-          /* UA dependent */
-          propSet.setPropertyValueNS
-            (ns, pfx, ln,
-             new cx.fam.suika.y2005.CSS.Value.NumericValue
-                   (1, "urn:x-suika-fam-cx:css:", null, "px"));
-          break;
-        case "urn:x-suika-fam-cx:css:medium":
-          /* UA dependent */
-          propSet.setPropertyValueNS
-            (ns, pfx, ln,
-             new cx.fam.suika.y2005.CSS.Value.NumericValue
-                   (3, "urn:x-suika-fam-cx:css:", null, "px"));
-          break;
-        case "urn:x-suika-fam-cx:css:thick":
-          /* UA dependent */
-          propSet.setPropertyValueNS
-            (ns, pfx, ln,
-             new cx.fam.suika.y2005.CSS.Value.NumericValue
-                   (5, "urn:x-suika-fam-cx:css:", null, "px"));
-          break;
-        /* Note.  CSS3 box model WD proposes 1px, 3px, and 5px as a possible choice. */
-        }
-      }
-    }
-  }),
-  "border-right-color": new cx.fam.suika.y2005.CSS.Property._PropImpl_Color ({
-    /* Introduced in CSS1, modified in CSS2, CSS3 border WD */
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "currentcolor")
-  }),
-  "border-right-style": new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["dashed", "dotted", "double", "groove",
-                                  "hidden", "inset", "none", "outset", "ridge",
-                                  "solid"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "none")
-  }),
-  "border-right-width": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
-    /* Introduced in CSS1, modified in CSS2, CSS3 Box model WD */
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["medium", "thick", "thin"]
-    ],
-    /* percentage allowed in CSS3 Box model WD */
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "medium"),
-    _NegativeNotAllowed: true,
-    setComputedValue: function (ns, pfx, ln, val, propSet, parentPropSet) {
-      var bs = propSet.getSpecifiedPropertyValueNS
-                         ("urn:x-suika-fam-cx:css:", "border-right-style");
-      switch (bs.getExpandedURI ()) {
-      case "urn:x-suika-fam-cx:css:none":
-      case "urn:x-suika-fam-cx:css:hidden":
-        propSet.setPropertyValueNS
-            (ns, pfx, ln,
-             new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null));
-        return;
-      }
-      if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-        switch (val.getExpandedURI ()) {
-        case "urn:x-suika-fam-cx:css:thin":
-          /* UA dependent */
-          propSet.setPropertyValueNS
-            (ns, pfx, ln,
-             new cx.fam.suika.y2005.CSS.Value.NumericValue
-                   (1, "urn:x-suika-fam-cx:css:", null, "px"));
-          break;
-        case "urn:x-suika-fam-cx:css:medium":
-          /* UA dependent */
-          propSet.setPropertyValueNS
-            (ns, pfx, ln,
-             new cx.fam.suika.y2005.CSS.Value.NumericValue
-                   (3, "urn:x-suika-fam-cx:css:", null, "px"));
-          break;
-        case "urn:x-suika-fam-cx:css:thick":
-          /* UA dependent */
-          propSet.setPropertyValueNS
-            (ns, pfx, ln,
-             new cx.fam.suika.y2005.CSS.Value.NumericValue
-                   (5, "urn:x-suika-fam-cx:css:", null, "px"));
-          break;
-        /* Note.  CSS3 box model WD proposes 1px, 3px, and 5px as a possible choice. */
-        }
-      }
-    }
-  }),
-  "border-style": new cx.fam.suika.y2005.CSS.Property._PropImpl ({
-    /* Introduced in CSS1, modified in CSS2 */
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["dashed", "dotted", "double", "groove",
-                                  "hidden", "inset", "none", "outset", "ridge",
-                                  "solid"]
-    ],
-    allowedBorderStyle: {
-      "urn:x-suika-fam-cx:css:dashed": true,
-      "urn:x-suika-fam-cx:css:dotted": true,
-      "urn:x-suika-fam-cx:css:double": true,
-      "urn:x-suika-fam-cx:css:groove": true,
-      "urn:x-suika-fam-cx:css:hidden": true,
-      "urn:x-suika-fam-cx:css:inset": true,
-      "urn:x-suika-fam-cx:css:none": true,
-      "urn:x-suika-fam-cx:css:outset": true,
-      "urn:x-suika-fam-cx:css:ridge": true,
-      "urn:x-suika-fam-cx:css:solid": true
-    },
-    parsePropertyValue: function (block, prop, propDef) {
-      var val = this._GetNextValue ();
-      if (val == null) return false;
-      if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-          propDef._AllowedKeyword[val.getNamespaceURI ()] &&
-          propDef._AllowedKeyword[val.getNamespaceURI ()][val.getLocalName ()]) {
-        var val1 = val;
-        val = this._GetNextValue ();
-        if (val && val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-          var val2 = val;
-          val = this._GetNextValue ();
-          if (val && val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-            var val3 = val;
-            val = this._GetNextValue ();
-            if (val && val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-              var val4 = val;
-            } else if (val) { return }
-          } else if (val) { return }
-        } else if (val) { return }
-        var im = this._GetPriority ();
-        if (im) {
-          val = this._Factory.createCSSValueList ();
-          val.addItem (val1);
-          if (val2) val.addItem (val2);
-          if (val3) val.addItem (val3);
-          if (val4) val.addItem (val4);
-          var p = this._Factory.createCSSPropertyNS
-                      (prop.namespaceURI, prop.prefix, prop.localName, val);
-          p.setPriority (im);
-          block.appendPropertyNode (p);
-          return true;
-        }
-      } else if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-        var im = this._GetPriority ();
-        if (im) {
-          var p = this._Factory.createCSSPropertyNS
-                      (prop.namespaceURI, prop.prefix, prop.localName, val);
-          p.setPriority (im);
-          block.appendPropertyNode (p);
-          return true;
-        }
-      } /* val */
-    },
-    setSpecifiedValues: function (ns, pfx, ln, prop, propSet) {
-      var val = prop.getPropertyValue ();
-      if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:VALUE_LIST") {
-        switch (val.getLength ()) {
-        case 1:
-          var val1 = val.item (0);
-          var val1ns = val1.getNamespaceURI ();
-          if (this._AllowedKeyword[val1ns]) {
-            if (this._AllowedKeyword[val1ns][val1.getLocalName ()]) {
-              propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-bottom-style", val1);
-              propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-left-style", val1);
-              propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-right-style", val1);
-              propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-top-style", val1);
-            }
-          }
-          break;
-        case 2:
-          var val1 = val.item (0);
-          var val2 = val.item (1);
-          var val1ns = val1.getNamespaceURI ();
-          var val2ns = val1.getNamespaceURI ();
-          if (this._AllowedKeyword[val1ns] && this._AllowedKeyword[val2ns]) {
-            if (this._AllowedKeyword[val1ns][val1.getLocalName ()] &&
-                this._AllowedKeyword[val2ns][val2.getLocalName ()]) {
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-bottom-style", val1);
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-left-style", val2);
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-right-style", val2);
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-top-style", val1);
-            }
-          }
-          break;
-        case 3:
-          var val1 = val.item (0);
-          var val2 = val.item (1);
-          var val3 = val.item (2);
-          var val1ns = val1.getNamespaceURI ();
-          var val2ns = val1.getNamespaceURI ();
-          var val3ns = val1.getNamespaceURI ();
-          if (this._AllowedKeyword[val1ns] &&
-              this._AllowedKeyword[val2ns] &&
-              this._AllowedKeyword[val3ns]) {
-            if (this._AllowedKeyword[val1ns][val1.getLocalName ()] &&
-                this._AllowedKeyword[val2ns][val2.getLocalName ()] &&
-                this._AllowedKeyword[val3ns][val3.getLocalName ()]) {
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-bottom-style", val3);
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-left-style", val2);
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-right-style", val2);
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-top-style", val1);
-            }
-          }
-          break;
-        case 4:
-          var val1 = val.item (0);
-          var val2 = val.item (1);
-          var val3 = val.item (2);
-          var val4 = val.item (3);
-          var val1ns = val1.getNamespaceURI ();
-          var val2ns = val1.getNamespaceURI ();
-          var val3ns = val1.getNamespaceURI ();
-          var val4ns = val1.getNamespaceURI ();
-          if (this._AllowedKeyword[val1ns] &&
-              this._AllowedKeyword[val2ns] &&
-              this._AllowedKeyword[val3ns] &&
-              this._AllowedKeyword[val4ns]) {
-            if (this._AllowedKeyword[val1ns][val1.getLocalName ()] &&
-                this._AllowedKeyword[val2ns][val2.getLocalName ()] &&
-                this._AllowedKeyword[val3ns][val3.getLocalName ()] &&
-                this._AllowedKeyword[val4ns][val4.getLocalName ()]) {
-              propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-bottom-style", val3);
-              propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-left-style", val4);
-              propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-right-style", val1);
-              propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-top-style", val0);
-            }
-          }
-          break;
-        }
-      } else if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-        var valns = val.getNamespaceURI ();
-        if (this._AllowedKeyword[valns]) {
-          if (this._AllowedKeyword[valns][val.getLocalName ()]) {
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-bottom-style", val);
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-left-style", val);
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-right-style", val);
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-top-style", val);
-          }
-        }
-      }
-    }
-  }),
-  "border-top-color": new cx.fam.suika.y2005.CSS.Property._PropImpl_Color ({
-    /* Introduced in CSS1, modified in CSS2, CSS3 border WD */
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "currentcolor")
-  }),
-  "border-top-style": new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["dashed", "dotted", "double", "groove",
-                                  "hidden", "inset", "none", "outset", "ridge",
-                                  "solid"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "none")
-  }),
-  "border-top-width": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
-    /* Introduced in CSS1, modified in CSS2, CSS3 Box model WD */
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["medium", "thick", "thin"]
-    ],
-    /* percentage allowed in CSS3 Box model WD */
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "medium"),
-    _NegativeNotAllowed: true,
-    setComputedValue: function (ns, pfx, ln, val, propSet, parentPropSet) {
-      var bs = propSet.getSpecifiedPropertyValueNS
-                         ("urn:x-suika-fam-cx:css:", "border-top-style");
-      switch (bs.getExpandedURI ()) {
-      case "urn:x-suika-fam-cx:css:none":
-      case "urn:x-suika-fam-cx:css:hidden":
-        propSet.setPropertyValueNS
-            (ns, pfx, ln,
-             new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null));
-        return;
-      }
-      if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-        switch (val.getExpandedURI ()) {
-        case "urn:x-suika-fam-cx:css:thin":
-          /* UA dependent */
-          propSet.setPropertyValueNS
-            (ns, pfx, ln,
-             new cx.fam.suika.y2005.CSS.Value.NumericValue
-                   (1, "urn:x-suika-fam-cx:css:", null, "px"));
-          break;
-        case "urn:x-suika-fam-cx:css:medium":
-          /* UA dependent */
-          propSet.setPropertyValueNS
-            (ns, pfx, ln,
-             new cx.fam.suika.y2005.CSS.Value.NumericValue
-                   (3, "urn:x-suika-fam-cx:css:", null, "px"));
-          break;
-        case "urn:x-suika-fam-cx:css:thick":
-          /* UA dependent */
-          propSet.setPropertyValueNS
-            (ns, pfx, ln,
-             new cx.fam.suika.y2005.CSS.Value.NumericValue
-                   (5, "urn:x-suika-fam-cx:css:", null, "px"));
-          break;
-        /* Note.  CSS3 box model WD proposes 1px, 3px, and 5px as a possible choice. */
-        }
-      }
-    }
-  }),
-  "border-width": new cx.fam.suika.y2005.CSS.Property._PropImpl ({
-    /* Introduced in CSS1, modified in CSS2 */
-    parsePropertyValue: function (block, prop) {
-      var val = this._GetNextValue ();
-      if (val == null) return false;
-      if (val.matchTypeURI
-            ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage")) {
-        var val1 = val;
-        val = this._GetNextValue ();
-        if (val && val.matchTypeURI
-              ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage")) {
-          var val2 = val;
-          val = this._GetNextValue ();
-          if (val && val.matchTypeURI
-              ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage")) {
-            var val3 = val;
-            val = this._GetNextValue ();
-            if (val && val.matchTypeURI
-              ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage")) {
-              var val4 = val;
-            } else if (val) { return }
-          } else if (val) { return }
-        } else if (val) { return }
-        var im = this._GetPriority ();
-        if (im) {
-          val = this._Factory.createCSSValueList ();
-          val.addItem (val1);
-          if (val2) val.addItem (val2);
-          if (val3) val.addItem (val3);
-          if (val4) val.addItem (val4);
-          var p = this._Factory.createCSSPropertyNS
-                      (prop.namespaceURI, prop.prefix, prop.localName, val);
-          p.setPriority (im);
-          block.appendPropertyNode (p);
-          return true;
-        }
-      } else if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-        var im = this._GetPriority ();
-        if (im) {
-          var p = this._Factory.createCSSPropertyNS
-                      (prop.namespaceURI, prop.prefix, prop.localName, val);
-          p.setPriority (im);
-          block.appendPropertyNode (p);
-          return true;
-        }
-      } /* val */
-    },
-    setSpecifiedValues: function (ns, pfx, ln, prop, propSet) {
-      var val = prop.getPropertyValue ();
-      if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:VALUE_LIST") {
-        switch (val.getLength ()) {
-        case 1:
-          var val1 = val.item (0);
-          if (!val1.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage"))
-             { break }
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-bottom-width", val1);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-left-width", val1);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-right-width", val1);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-top-width", val1);
-          break;
-        case 2:
-          var val1 = val.item (0);
-          var val2 = val.item (1);
-          if (!val1.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage"))
-             { break }
-          if (!val2.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage"))
-             { break }
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-bottom-width", val1);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-left-width", val2);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-right-width", val2);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-top-width", val1);
-          break;
-        case 3:
-          var val1 = val.item (0);
-          var val2 = val.item (1);
-          var val3 = val.item (2);
-          if (!val1.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage"))
-             { break }
-          if (!val2.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage"))
-             { break }
-          if (!val3.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage"))
-             { break }
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-bottom-width", val3);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-left-width", val2);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-right-width", val2);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-top-width", val1);
-          break;
-        case 4:
-          var val1 = val.item (0);
-          var val2 = val.item (1);
-          var val3 = val.item (2);
-          var val4 = val.item (3);
-          if (!val1.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage"))
-             { break }
-          if (!val2.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage"))
-             { break }
-          if (!val3.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage"))
-             { break }
-          if (!val4.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage"))
-             { break }
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-bottom-width", val4);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-left-width", val4);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-right-width", val3);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-top-width", val1);
-          break;
-        }
-      } else if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-        var valns = val.getNamespaceURI ();
-        if (this._AllowedKeyword[valns]) {
-          if (this._AllowedKeyword[valns][val.getLocalName ()]) {
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-bottom-width", val);
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-left-width", val);
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-right-width", val);
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "border-top-width", val);
-          }
-        }
-      }
-    }
-  }),
-  "bottom": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["auto"]
-    ],
-    /* computed value might be amended in |position| computing */
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "auto")
-  }),
-  clear: new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["both", "left", "none", "right"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "none")
-  }),
-  color: new cx.fam.suika.y2005.CSS.Property._PropImpl_Color ({
+  isShorthand: true,
+  isValidValue: function () { return false },
+  negativeNotAllowed: true,
+  setDeclaredValue: cx.fam.suika.y2005.CSS.Property.setDeclaredValue4
+                          ("urn:x-suika-fam-cx:css:", "border-", "-width"),
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:medium": true,
+    "urn:x-suika-fam-cx:css:thick": true,
+    "urn:x-suika-fam-cx:css:thin": true
+  },
+  validType: {
+    "tag:manakai@suika.fam.cx,2005-11:length": true,
+    "tag:manakai@suika.fam.cx,2005-11:percentage": true
+      /* percentage allowed in CSS3 Box model WD */
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:bottom"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Length ({
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "auto"),
+  /* Computed value might be amended in |position| computing */
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:auto": true
+  },
+  validType: {
+    "tag:manakai@suika.fam.cx,2005-11:length": true,
+    "tag:manakai@suika.fam.cx,2005-11:percentage": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:clear"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "none"),
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:both": true,
+    "urn:x-suika-fam-cx:css:left": true,
+    "urn:x-suika-fam-cx:css:none": true,
+    "urn:x-suika-fam-cx:css:right": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:color"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Color ({
     /* Introduced in CSS1, modified in CSS2, CSS2.1, SVG1, CSS3 Color CR */
     /* TODO: |attr| */
-    inherit: true,
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("http://suika.fam.cx/~wakaba/archive/2005/cssc.",
-                    "manakai_c", "user-agent-dependent")
-  }),
-  direction: new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["ltr", "rtl"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "ltr")
-  }),
-  display: new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
-    setSpecifiedValues: function (ns, pfx, ln, prop, propSet) {
-      var val = prop.getPropertyValue ();
-      if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-        var valln = val.getLocalName ();
-        switch (val.getNamespaceURI () + valln) {
-        case "urn:x-suika-fam-cx:css:none":
-        case "urn:x-suika-fam-cx:css:inline":
-        case "urn:x-suika-fam-cx:css:run-in":
-        case "urn:x-suika-fam-cx:css:compact":
-        case "urn:x-suika-fam-cx:css:table-cell":
-        case "urn:x-suika-fam-cx:css:table-caption":
-        case "urn:x-suika-fam-cx:css:table-row-group":
-        case "urn:x-suika-fam-cx:css:table-header-group":
-        case "urn:x-suika-fam-cx:css:table-footer-group":
-        case "urn:x-suika-fam-cx:css:table-column":
-        case "urn:x-suika-fam-cx:css:table-column-group":
-        case "urn:x-suika-fam-cx:css:table-row":
-        case "urn:x-suika-fam-cx:css:ruby-base":
-        case "urn:x-suika-fam-cx:css:ruby-text":
-        case "urn:x-suika-fam-cx:css:ruby-base-group":
-        case "urn:x-suika-fam-cx:css:ruby-text-group":
-          propSet.setPropertyValueNS
+  inherit: true,
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("http://suika.fam.cx/~wakaba/archive/2005/cssc.",
+                       "manakai_c", "user-agent-dependent"),
+  parseValueFromTokens: function (parser, namespaceURI, prefix, localName) {
+    var value = cx.fam.suika.y2005.CSS.Property.Definition_Color
+                  .prototype.parseValueFromTokens.apply (this, arguments);
+    if (value &&
+        value.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
+        value.getExpandedURI () == "urn:x-suika-fam-cx:css:currentcolor") {
+      value = new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "inherit");
+    }
+    return value;
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:direction"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "ltr"),
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:ltr": true,
+    "urn:x-suika-fam-cx:css:rtl": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:display"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
+  isShorthand: true,
+  isValidValue: function () { return false },
+  setDeclaredValue: function (namespaceURI, prefix, localName,
+                              propSet, valueSource, priority) {
+    if (valueSource.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
+      switch (valueSource.getExpandedURI ()) {
+      case "urn:x-suika-fam-cx:css:none":
+      case "urn:x-suika-fam-cx:css:inline":
+      case "urn:x-suika-fam-cx:css:run-in":
+      case "urn:x-suika-fam-cx:css:compact":
+      case "urn:x-suika-fam-cx:css:table-cell":
+      case "urn:x-suika-fam-cx:css:table-caption":
+      case "urn:x-suika-fam-cx:css:table-row-group":
+      case "urn:x-suika-fam-cx:css:table-header-group":
+      case "urn:x-suika-fam-cx:css:table-footer-group":
+      case "urn:x-suika-fam-cx:css:table-column":
+      case "urn:x-suika-fam-cx:css:table-column-group":
+      case "urn:x-suika-fam-cx:css:table-row":
+      case "urn:x-suika-fam-cx:css:ruby-base":
+      case "urn:x-suika-fam-cx:css:ruby-text":
+      case "urn:x-suika-fam-cx:css:ruby-base-group":
+      case "urn:x-suika-fam-cx:css:ruby-text-group":
+        propSet.setPropertyValueNS
             ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
              "manakai", "display-role",
              new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, valln));
-          propSet.setPropertyValueNS
+                   ("urn:x-suika-fam-cx:css:", null, valueSource.getLocalName ()));
+        propSet.setPropertyValueNS
             ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
              "manakai", "display-model",
              new cx.fam.suika.y2005.CSS.Value.IdentValue
                    ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
                     "manakai", "inline-inside"));
-          break;
-        case "urn:x-suika-fam-cx:css:block":
-        case "urn:x-suika-fam-cx:css:list-item":
-          propSet.setPropertyValueNS
+        break;
+      case "urn:x-suika-fam-cx:css:block":
+      case "urn:x-suika-fam-cx:css:list-item":
+        propSet.setPropertyValueNS
             ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
              "manakai", "display-role",
              new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, valln));
-          propSet.setPropertyValueNS
+                   ("urn:x-suika-fam-cx:css:", null, valueSource.getLocalName ()));
+        propSet.setPropertyValueNS
             ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
              "manakai", "display-model",
              new cx.fam.suika.y2005.CSS.Value.IdentValue
                    ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
                     "manakai", "block-inside"));
-          break;
-        case "urn:x-suika-fam-cx:css:table":
-          propSet.setPropertyValueNS
+        break;
+      case "urn:x-suika-fam-cx:css:table":
+        propSet.setPropertyValueNS
             ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
              "manakai", "display-role",
              new cx.fam.suika.y2005.CSS.Value.IdentValue
                    ("urn:x-suika-fam-cx:css:", null, "block"));
-          propSet.setPropertyValueNS
+        propSet.setPropertyValueNS
             ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
              "manakai", "display-model",
              new cx.fam.suika.y2005.CSS.Value.IdentValue
                    ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
                     "manakai", "table"));
-          break;
-        case "urn:x-suika-fam-cx:css:inline-block":
-          propSet.setPropertyValueNS
+        break;
+      case "urn:x-suika-fam-cx:css:inline-block":
+        propSet.setPropertyValueNS
             ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
              "manakai", "display-role",
              new cx.fam.suika.y2005.CSS.Value.IdentValue
                    ("urn:x-suika-fam-cx:css:", null, "inline"));
-          propSet.setPropertyValueNS
+        propSet.setPropertyValueNS
             ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
              "manakai", "display-model",
              new cx.fam.suika.y2005.CSS.Value.IdentValue
                    ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
                     "manakai", "block-inside"));
-          break;
-        case "urn:x-suika-fam-cx:css:inline-table":
-          propSet.setPropertyValueNS
+        break;
+      case "urn:x-suika-fam-cx:css:inline-table":
+        propSet.setPropertyValueNS
             ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
              "manakai", "display-role",
              new cx.fam.suika.y2005.CSS.Value.IdentValue
                    ("urn:x-suika-fam-cx:css:", null, "inline"));
-          propSet.setPropertyValueNS
+        propSet.setPropertyValueNS
             ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
              "manakai", "display-model",
              new cx.fam.suika.y2005.CSS.Value.IdentValue
                    ("urn:x-suika-fam-cx:css:", null, "table"));
           break;
-        case "urn:x-suika-fam-cx:css:ruby":
-          propSet.setPropertyValueNS
+      case "urn:x-suika-fam-cx:css:ruby":
+        propSet.setPropertyValueNS
             ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
              "manakai", "display-role",
              new cx.fam.suika.y2005.CSS.Value.IdentValue
                    ("urn:x-suika-fam-cx:css:", null, "inline"));
-          propSet.setPropertyValueNS
+        propSet.setPropertyValueNS
             ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
              "manakai", "display-model",
              new cx.fam.suika.y2005.CSS.Value.IdentValue
                    ("urn:x-suika-fam-cx:css:", null, "ruby"));
-          break;
-        default:
-          var valns = val.getNamespaceURI ();
-          if (this._AllowedKeyword[valns]) {
-            if (this._AllowedKeyword[valns][valln]) {
-              propSet.setPropertyValueNS
+        break;
+      default:
+        propSet.setPropertyValueNS
                 ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
-                 "manakai", "display-role", val);
-              propSet.setPropertyValueNS
+                 "manakai", "display-role", valueSource);
+        propSet.setPropertyValueNS
                 ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
-                 "manakai", "display-model", val);
-            }
-          }
-        }
+                 "manakai", "display-model", valueSource);
       } /* typeURI */
     }
-  }),
-  "float": new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["left", "none", "right"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "none")
-  }),
-  "height": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["auto"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "auto")
-  }),
-  "left": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["auto"]
-    ],
-    /* computed value might be amended in |position| computing */
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "auto")
-  }),
-  "line-height": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["normal"]
-    ],
-    inherit: true,
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "normal"),
-    _NegativeNotAllowed: true,
-    _NumberAllowed: true
-  }),
-  "margin": new cx.fam.suika.y2005.CSS.Property._PropImpl ({
-    /* Introduced in CSS1, modified in CSS2 */
-    parsePropertyValue: function (block, prop) {
-      var val = this._GetNextValue ();
-      if (val == null) return false;
-      if (val.matchTypeURI
-            ("tag:manakai@suika.fam.cx,2005-11:length-or-percentage") ||
-          (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-           val.getExpandedURI () == "urn:x-suika-fam-cx:css:auto")) {
-        var val1 = val;
-        val = this._GetNextValue ();
-        if (val && (val.matchTypeURI
-              ("tag:manakai@suika.fam.cx,2005-11:length-or-percentage") ||
-            (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-             val.getExpandedURI () == "urn:x-suika-fam-cx:css:auto"))) {
-          var val2 = val;
-          val = this._GetNextValue ();
-          if (val && (val.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:length-or-percentage") ||
-              (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-               val.getExpandedURI () == "urn:x-suika-fam-cx:css:auto"))) {
-            var val3 = val;
-            val = this._GetNextValue ();
-            if (val && (val.matchTypeURI
-                 ("tag:manakai@suika.fam.cx,2005-11:length-or-percentage") ||
-                (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-                 val.getExpandedURI () == "urn:x-suika-fam-cx:css:auto"))) {
-              var val4 = val;
-            } else if (val) { return }
-          } else if (val) { return }
-        } else if (val) { return }
-        var im = this._GetPriority ();
-        if (im) {
-          val = this._Factory.createCSSValueList ();
-          val.addItem (val1);
-          if (val2) val.addItem (val2);
-          if (val3) val.addItem (val3);
-          if (val4) val.addItem (val4);
-          var p = this._Factory.createCSSPropertyNS
-                      (prop.namespaceURI, prop.prefix, prop.localName, val);
-          p.setPriority (im);
-          block.appendPropertyNode (p);
-          return true;
-        }
-      } else if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-        var im = this._GetPriority ();
-        if (im) {
-          var p = this._Factory.createCSSPropertyNS
-                      (prop.namespaceURI, prop.prefix, prop.localName, val);
-          p.setPriority (im);
-          block.appendPropertyNode (p);
-          return true;
-        }
-      } /* val */
-    },
-    setSpecifiedValues: function (ns, pfx, ln, prop, propSet) {
-      var val = prop.getPropertyValue ();
-      if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:VALUE_LIST") {
-        switch (val.getLength ()) {
-        case 1:
-          var val1 = val.item (0);
-          if (val1.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:length-or-percentage") ||
-              (val1.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-               this._AllowedKeyword[val1.getNamespaceURI ()] &&
-               this._AllowedKeyword[val1.getNamespaceURI ()][val1.getLocalName ()])) {
-          } else { break }
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "margin-bottom", val1);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "margin-left", val1);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "margin-right", val1);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "margin-top", val1);
-          break;
-        case 2:
-          var val1 = val.item (0);
-          var val2 = val.item (1);
-          if (val1.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:length-or-percentage") ||
-              (val1.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-               this._AllowedKeyword[val1.getNamespaceURI ()] &&
-               this._AllowedKeyword[val1.getNamespaceURI ()][val1.getLocalName ()])) {
-          } else { break }
-          if (val2.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:length-or-percentage") ||
-              (val2.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-               this._AllowedKeyword[val2.getNamespaceURI ()] &&
-               this._AllowedKeyword[val2.getNamespaceURI ()][val2.getLocalName ()])) {
-          } else { break }
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "margin-bottom", val1);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "margin-left", val2);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "margin-right", val2);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "margin-top", val1);
-          break;
-        case 3:
-          var val1 = val.item (0);
-          var val2 = val.item (1);
-          var val3 = val.item (2);
-          if (val1.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:length-or-percentage") ||
-              (val1.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-               this._AllowedKeyword[val1.getNamespaceURI ()] &&
-               this._AllowedKeyword[val1.getNamespaceURI ()][val1.getLocalName ()])) {
-          } else { break }
-          if (val2.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:length-or-percentage") ||
-              (val2.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-               this._AllowedKeyword[val2.getNamespaceURI ()] &&
-               this._AllowedKeyword[val2.getNamespaceURI ()][val2.getLocalName ()])) {
-          } else { break }
-          if (val3.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:length-or-percentage") ||
-              (val3.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-               this._AllowedKeyword[val3.getNamespaceURI ()] &&
-               this._AllowedKeyword[val3.getNamespaceURI ()][val3.getLocalName ()])) {
-          } else { break }
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "margin-bottom", val3);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "margin-left", val2);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "margin-right", val2);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "margin-top", val1);
-          break;
-        case 4:
-          var val1 = val.item (0);
-          var val2 = val.item (1);
-          var val3 = val.item (2);
-          var val4 = val.item (3);
-          if (val1.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:length-or-percentage") ||
-              (val1.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-               this._AllowedKeyword[val1.getNamespaceURI ()] &&
-               this._AllowedKeyword[val1.getNamespaceURI ()][val1.getLocalName ()])) {
-          } else { break }
-          if (val2.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:length-or-percentage") ||
-              (val2.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-               this._AllowedKeyword[val2.getNamespaceURI ()] &&
-               this._AllowedKeyword[val2.getNamespaceURI ()][val2.getLocalName ()])) {
-          } else { break }
-          if (val3.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:length-or-percentage") ||
-              (val3.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-               this._AllowedKeyword[val3.getNamespaceURI ()] &&
-               this._AllowedKeyword[val3.getNamespaceURI ()][val3.getLocalName ()])) {
-          } else { break }
-          if (val4.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:length-or-percentage") ||
-              (val4.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-               this._AllowedKeyword[val4.getNamespaceURI ()] &&
-               this._AllowedKeyword[val4.getNamespaceURI ()][val4.getLocalName ()])) {
-          } else { break }
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "margin-bottom", val3);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "margin-left", val4);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "margin-right", val2);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "margin-top", val1);
-          break;
-        }
-      } else if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-        var valns = val.getNamespaceURI ();
-        if (this._AllowedKeyword[valns]) {
-          if (this._AllowedKeyword[valns][valln]) {
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "margin-bottom", val);
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "margin-left", val);
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "margin-right", val);
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "margin-top", val);
-          }
-        }
-      }
-    }
-  }),
-  "margin-bottom": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["auto"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null)
-  }),
-  "margin-left": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["auto"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null)
-  }),
-  "margin-right": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["auto"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null)
-  }),
-  "margin-top": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["auto"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null)
-  }),
-  "max-height": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["auto"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "auto")
-  }),
-  "max-width": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["auto"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "auto")
-  }),
-  "min-height": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["auto"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "auto")
-  }),
-  "min-width": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["auto"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "auto")
-  }),
-  opacity: new cx.fam.suika.y2005.CSS.Property._PropImpl ({
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition
+["http://suika.fam.cx/~wakaba/archive/2005/11/css.display-model"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
+    /* CSS3 Box model WD */
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                   ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
+                    "manakai", "inline-inside"),
+  prefix: "manakai",
+  validKeyword: {
+    "http://suika.fam.cx/~wakaba/archive/2005/11/css.blick-inside": true,
+    "http://suika.fam.cx/~wakaba/archive/2005/11/css.inline-inside": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition
+["http://suika.fam.cx/~wakaba/archive/2005/11/css.display-role"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
+    /* CSS3 Box model WD */
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                   ("urn:x-suika-fam-cx:css:", null, "inline"),
+  prefix: "manakai",
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:block": true,
+    "urn:x-suika-fam-cx:css:compact": true,
+    "urn:x-suika-fam-cx:css:inline": true,
+    "urn:x-suika-fam-cx:css:list-item": true,
+    "urn:x-suika-fam-cx:css:none": true,
+    "urn:x-suika-fam-cx:css:ruby-base": true,
+    "urn:x-suika-fam-cx:css:ruby-base-group": true,
+    "urn:x-suika-fam-cx:css:ruby-text": true,
+    "urn:x-suika-fam-cx:css:ruby-text-group": true,
+    "urn:x-suika-fam-cx:css:run-in": true,
+    "urn:x-suika-fam-cx:css:table": true,
+    "urn:x-suika-fam-cx:css:table-caption": true,
+    "urn:x-suika-fam-cx:css:table-cell": true,
+    "urn:x-suika-fam-cx:css:table-column": true,
+    "urn:x-suika-fam-cx:css:table-column-group": true,
+    "urn:x-suika-fam-cx:css:table-footer-group": true,
+    "urn:x-suika-fam-cx:css:table-header-group": true,
+    "urn:x-suika-fam-cx:css:table-row": true,
+    "urn:x-suika-fam-cx:css:table-row-group": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:float"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "none"),
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:left": true,
+    "urn:x-suika-fam-cx:css:none": true,
+    "urn:x-suika-fam-cx:css:right": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:height"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Length ({
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "auto"),
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:auto": true
+  },
+  validType: {
+    "tag:manakai@suika.fam.cx,2005-11:length": true,
+    "tag:manakai@suika.fam.cx,2005-11:percentage": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:left"]
+  = cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:bottom"];
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:margin"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Length4 ({
+    /* Introduced in CSS1, modified in CSS2, CSS3 Box model WD */
+  isShorthand: true,
+  isValidValue: function () { return false },
+  setDeclaredValue: cx.fam.suika.y2005.CSS.Property.setDeclaredValue4
+                          ("urn:x-suika-fam-cx:css:", "margin-", ""),
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:auto": true
+  },
+  validType: {
+    "tag:manakai@suika.fam.cx,2005-11:length": true,
+    "tag:manakai@suika.fam.cx,2005-11:percentage": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:margin-bottom"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Length ({
+    /* Introduced in CSS1, modified in CSS2, CSS3 Box model WD */
+  initialValue: new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null),
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:auto": true
+  },
+  validType: {
+    "tag:manakai@suika.fam.cx,2005-11:length": true,
+    "tag:manakai@suika.fam.cx,2005-11:percentage": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:margin-left"]
+  = cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:margin-bottom"];
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:margin-right"]
+  = cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:margin-bottom"];
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:margin-top"]
+  = cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:margin-bottom"];
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:padding"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Length4 ({
+    /* Introduced in CSS1, modified in CSS2, CSS3 Box model WD */
+  isShorthand: true,
+  isValidValue: function () { return false },
+  negativeNotAllowed: true,
+  setDeclaredValue: cx.fam.suika.y2005.CSS.Property.setDeclaredValue4
+                          ("urn:x-suika-fam-cx:css:", "padding-", ""),
+  validType: {
+    "tag:manakai@suika.fam.cx,2005-11:length": true,
+    "tag:manakai@suika.fam.cx,2005-11:percentage": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:max-height"]
+  = cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:height"];
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:max-width"]
+  = cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:height"];
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:min-height"]
+  = cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:height"];
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:min-width"]
+  = cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:height"];
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:opacity"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Length ({
     /* Introduced in SVG1, also defined in CSS3 color CR */
     /* Gecko's deprecated equivalent, |-moz-opacity|, had trouble
        in its implementation so that not identical to this property. */
-    parsePropertyValue: function (block, prop) {
-      var val = this._GetNextValue ();
-      if (val == null) return false;
-      if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:NUMBER" ||
-          val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-        var im = this._GetPriority ();
-        if (im) {
-          var p = this._Factory.createCSSPropertyNS
-                      (prop.namespaceURI, prop.prefix, prop.localName, val);
-          p.setPriority (im);
-          block.appendPropertyNode (p);
-          return true;
-        }
-      } /* val */
-    },
-    setComputedValue: function (ns, pfx, ln, val, propSet, parentPropSet) {
-      var val = val.getValue ();
+  initialValue: new cx.fam.suika.y2005.CSS.Value.NumericValue (1, null, null, null),
+  setComputedValue: function (namespaceURI, prefix, localName, parentPropSet,
+                              propSet, value, elementNode) {
+    if (value.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:NUMBER") {
+      var val = value.getValue ();
       if (val < 0) {
         propSet.setPropertyValueNS
-          (ns, pfx, ln,
+          (namespaceURI, prefix, localName,
            new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null));
       } else if (val > 1) {
         propSet.setPropertyValueNS
-          (ns, pfx, ln,
+          (namespaceURI, prefix, localName,
            new cx.fam.suika.y2005.CSS.Value.NumericValue (1, null, null, null));
       }
-    },
-    setSpecifiedValues: function (ns, pfx, ln, prop, propSet) {
-      var val = prop.getPropertyValue ();
-      if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:NUMBER") {
-        propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "opacity", val);
-      } else if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-        var valns = val.getNamespaceURI ();
-        if (this._AllowedKeyword[valns]) {
-          if (this._AllowedKeyword[valns][valln]) {
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "opacity", val);
-          }
-        }
-      }
-    },
-    initial: new cx.fam.suika.y2005.CSS.Value.NumericValue (1, null, null, null)
-  }),
-  overflow: new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
-    setSpecifiedValues: function (ns, pfx, ln, prop, propSet) {
-      var val = prop.getPropertyValue ();
-      if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-        var valln = val.getLocalName ();
-        switch (val.getNamespaceURI () + valln) {
-        case "urn:x-suika-fam-cx:css:auto":
-        case "urn:x-suika-fam-cx:css:hidden":
-        case "urn:x-suika-fam-cx:css:scroll":
-        case "urn:x-suika-fam-cx:css:visible":
-          propSet.setPropertyValueNS
-              ("urn:x-suika-fam-cx:css:", null, "overflow-x", val);
-          propSet.setPropertyValueNS
-              ("urn:x-suika-fam-cx:css:", null, "overflow-y", val);
-          break;
-        case "urn:x-suika-fam-cx:css:-moz-scrollbars-none":
-          propSet.setPropertyValueNS
-              ("urn:x-suika-fam-cx:css:", null, "overflow-x",
-               new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "scroll"));
-          propSet.setPropertyValueNS
-              ("urn:x-suika-fam-cx:css:", null, "overflow-y",
-               new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "scroll"));
-          propSet.setPropertyValueNS
-              ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
-               "manakai", "scroller",
-               new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
-                    "manakai", "invisible"));
-          break;
-        case "urn:x-suika-fam-cx:css:-moz-scrollbars-horizontal":
-          propSet.setPropertyValueNS
-              ("urn:x-suika-fam-cx:css:", null, "overflow-x",
-               new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "scroll"));
-          propSet.setPropertyValueNS
-              ("urn:x-suika-fam-cx:css:", null, "overflow-y",
-               new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "auto"));
-          propSet.setPropertyValueNS
-              ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
-               "manakai", "scroller",
-               new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
-                    "manakai", "scrollbar"));
-          break;
-        case "urn:x-suika-fam-cx:css:-moz-scrollbars-vertical":
-          propSet.setPropertyValueNS
-              ("urn:x-suika-fam-cx:css:", null, "overflow-x",
-               new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "auto"));
-          propSet.setPropertyValueNS
-              ("urn:x-suika-fam-cx:css:", null, "overflow-y",
-               new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "scroll"));
-          propSet.setPropertyValueNS
-              ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
-               "manakai", "scroller",
-               new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
-                    "manakai", "scrollbar"));
-          break;
-        default:
-          var valns = val.getNamespaceURI ();
-          if (this._AllowedKeyword[valns]) {
-            if (this._AllowedKeyword[valns][valln]) {
-              propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "overflow-x", val);
-              propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "overflow-y", val);
-            }
-          }
-        }
-      }
+      return;
     }
-  }),
-  "overflow-x": new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
+    cx.fam.suika.y2005.CSS.Property.Definition_Length.prototype.setComputedValue
+      .apply (this, arguments);
+  },
+  validType: {
+    "tag:manakai@suika.fam.cx,2005-11:number": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:overflow"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
+  isShorthand: true,
+  isValidValue: function () { return false },
+  setDeclaredValue: function (namespaceURI, prefix, localName,
+                              propSet, valueSource, priority) {
+    var checker = cx.fam.suika.y2005.CSS.Property.Definition
+                  ["overflow-x"].isValidValue;
+    if (!checker.apply (this, [namespaceURI, localName, valueSource, true])) return;
+    propSet.addPropertyValueNS
+      ("urn:x-suika-fam-cx:css:", null, "overflow-x", valueSource, priority);
+    propSet.addPropertyValueNS
+      ("urn:x-suika-fam-cx:css:", null, "overflow-y", valueSource, priority);
+  },
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:auto": true,
+    "urn:x-suika-fam-cx:css:hidden": true,
+    "urn:x-suika-fam-cx:css:scroll": true,
+    "urn:x-suika-fam-cx:css:visible": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:overflow-x"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
     /* CSS3 box model WD, WinIE 5.0+, Firefox 1.5+ */
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["auto", "hidden", "scroll", "visible"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "visible")
-  }),
-  "overflow-y": new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "visible"),
+  setComputedValue: function (namespaceURI, prefix, localName, parentPropSet,
+                              propSet, value, elementNode) {
+    cx.fam.suika.y2005.CSS.Property.Definition_Length.prototype.setComputedValue
+      .apply (this, arguments);
+    value = propSet.getSpecifiedPropertyValueNS (namespaceURI, localName);
+  },
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:auto": true,
+    "urn:x-suika-fam-cx:css:hidden": true,
+    "urn:x-suika-fam-cx:css:scroll": true,
+    "urn:x-suika-fam-cx:css:visible": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:overflow-y"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
     /* CSS3 box model WD, WinIE 5.0+, Firefox 1.5+ */
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["auto", "hidden", "scroll", "visible"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "visible"),
-    setComputedValue: function (ns, pfx, ln, val, propSet, parentPropSet) {
-      var oX = propSet.getSpecifiedPropertyValueNS
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "visible"),
+  setComputedValue: function (namespaceURI, prefix, localName, parentPropSet,
+                              propSet, value, elementNode) {
+    cx.fam.suika.y2005.CSS.Property.Definition_Length.prototype.setComputedValue
+      .apply (this, arguments);
+    
+    var oX = propSet.getSpecifiedPropertyValueNS
                  ("urn:x-suika-fam-cx:css:", "overflow-x");
-      var oY = propSet.getSpecifiedPropertyValueNS
+    var oY = propSet.getSpecifiedPropertyValueNS
                  ("urn:x-suika-fam-cx:css:", "overflow-y");
-      switch (oX.getExpandedURI ()) {
-      case "urn:x-suika-fam-cx:css:visible":
-        switch (oY.getExpandedURI ()) {
-        case "urn:x-suika-fam-cx:css:auto":
-        case "urn:x-suika-fam-cx:css:scroll":
-          propSet.setPropertyValueNS
-              ("urn:x-suika-fam-cx:css:", null, "overflow-x",
-               new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "auto"));
-          break;
-        }
-        break;
+    switch (oX.getExpandedURI ()) {
+    case "urn:x-suika-fam-cx:css:visible":
+      switch (oY.getExpandedURI ()) {
       case "urn:x-suika-fam-cx:css:auto":
       case "urn:x-suika-fam-cx:css:scroll":
-        switch (oY.getExpandedURI ()) {
-        case "urn:x-suika-fam-cx:css:visible":
-          propSet.setPropertyValueNS
+        propSet.setPropertyValueNS
+              ("urn:x-suika-fam-cx:css:", null, "overflow-x",
+               new cx.fam.suika.y2005.CSS.Value.IdentValue
+                   ("urn:x-suika-fam-cx:css:", null, "auto"));
+        break;
+      }
+      break;
+    case "urn:x-suika-fam-cx:css:auto":
+    case "urn:x-suika-fam-cx:css:scroll":
+      switch (oY.getExpandedURI ()) {
+      case "urn:x-suika-fam-cx:css:visible":
+        propSet.setPropertyValueNS
               ("urn:x-suika-fam-cx:css:", null, "overflow-y",
                new cx.fam.suika.y2005.CSS.Value.IdentValue
                    ("urn:x-suika-fam-cx:css:", null, "auto"));
-          break;
-        }
         break;
       }
+      break;
     }
-  }),
-  "padding": new cx.fam.suika.y2005.CSS.Property._PropImpl ({
-    /* Introduced in CSS1, modified in CSS2 */
-    parsePropertyValue: function (block, prop) {
-      var val = this._GetNextValue ();
-      if (val == null) return false;
-      if (val.matchTypeURI
-            ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage")) {
-        var val1 = val;
-        val = this._GetNextValue ();
-        if (val && val.matchTypeURI
-              ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage")) {
-          var val2 = val;
-          val = this._GetNextValue ();
-          if (val && val.matchTypeURI
-              ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage")) {
-            var val3 = val;
-            val = this._GetNextValue ();
-            if (val && val.matchTypeURI
-              ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage")) {
-              var val4 = val;
-            } else if (val) { return }
-          } else if (val) { return }
-        } else if (val) { return }
-        var im = this._GetPriority ();
-        if (im) {
-          val = this._Factory.createCSSValueList ();
-          val.addItem (val1);
-          if (val2) val.addItem (val2);
-          if (val3) val.addItem (val3);
-          if (val4) val.addItem (val4);
-          var p = this._Factory.createCSSPropertyNS
-                      (prop.namespaceURI, prop.prefix, prop.localName, val);
-          p.setPriority (im);
-          block.appendPropertyNode (p);
-          return true;
-        }
-      } else if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-        var im = this._GetPriority ();
-        if (im) {
-          var p = this._Factory.createCSSPropertyNS
-                      (prop.namespaceURI, prop.prefix, prop.localName, val);
-          p.setPriority (im);
-          block.appendPropertyNode (p);
-          return true;
-        }
-      } /* val */
-    },
-    setSpecifiedValues: function (ns, pfx, ln, prop, propSet) {
-      var val = prop.getPropertyValue ();
-      if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:VALUE_LIST") {
-        switch (val.getLength ()) {
-        case 1:
-          var val1 = val.item (0);
-          if (!val1.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage"))
-             { break }
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "padding-bottom", val1);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "padding-left", val1);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "padding-right", val1);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "padding-top", val1);
-          break;
-        case 2:
-          var val1 = val.item (0);
-          var val2 = val.item (1);
-          if (!val1.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage"))
-             { break }
-          if (!val2.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage"))
-             { break }
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "padding-bottom", val1);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "padding-left", val2);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "padding-right", val2);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "padding-top", val1);
-          break;
-        case 3:
-          var val1 = val.item (0);
-          var val2 = val.item (1);
-          var val3 = val.item (2);
-          if (!val1.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage"))
-             { break }
-          if (!val2.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage"))
-             { break }
-          if (!val3.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage"))
-             { break }
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "padding-bottom", val3);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "padding-left", val2);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "padding-right", val2);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "padding-top", val1);
-          break;
-        case 4:
-          var val1 = val.item (0);
-          var val2 = val.item (1);
-          var val3 = val.item (2);
-          var val4 = val.item (3);
-          if (!val1.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage"))
-             { break }
-          if (!val2.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage"))
-             { break }
-          if (!val3.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage"))
-             { break }
-          if (!val4.matchTypeURI
-                ("tag:manakai@suika.fam.cx,2005-11:non-negative-length-or-percentage"))
-             { break }
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "padding-bottom", val3);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "padding-left", val4);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "padding-right", val2);
-          propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "padding-top", val1);
-          break;
-        }
-      } else if (val.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
-        var valns = val.getNamespaceURI ();
-        if (this._AllowedKeyword[valns]) {
-          if (this._AllowedKeyword[valns][valln]) {
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "padding-bottom", val);
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "padding-left", val);
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "padding-right", val);
-            propSet.setPropertyValueNS
-                ("urn:x-suika-fam-cx:css:", null, "padding-top", val);
-          }
-        }
-      }
-    }
-  }),
-  "padding-bottom": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
-    initial: new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null),
-    _NegativeNotAllowed: true
-  }),
-  "padding-left": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
-    initial: new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null),
-    _NegativeNotAllowed: true
-  }),
-  "padding-right": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
-    initial: new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null),
-    _NegativeNotAllowed: true
-  }),
-  "padding-top": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
-    initial: new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null),
-    _NegativeNotAllowed: true
-  }),
-  position: new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["absolute", "fixed", "relative", "static"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "static"),
-    setComputedValue: function (ns, pfx, ln, val, propSet, parentPropSet) {
-      switch (val.getExpandedURI ()) {
-      case "urn:x-suika-fam-cx:css:static":
-        var autoVal = new cx.fam.suika.y2005.CSS.Value.IdentValue
+  },
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:auto": true,
+    "urn:x-suika-fam-cx:css:hidden": true,
+    "urn:x-suika-fam-cx:css:scroll": true,
+    "urn:x-suika-fam-cx:css:visible": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:padding-bottom"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Length ({
+    /* Introduced in CSS1, modified in CSS2, CSS3 Box model WD */
+  initialValue: new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null),
+  negativeNotAllowed: true,
+  validType: {
+    "tag:manakai@suika.fam.cx,2005-11:length": true,
+    "tag:manakai@suika.fam.cx,2005-11:percentage": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:padding-left"]
+ = cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:padding-bottom"];
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:padding-right"]
+ = cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:padding-bottom"];
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:padding-top"]
+ = cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:padding-bottom"];
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:position"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "static"),
+  setComputedValue: function (namespaceURI, prefix, localName, parentPropSet,
+                              propSet, value, elementNode) {
+    cx.fam.suika.y2005.CSS.Property.Definition_Length.prototype.setComputedValue
+      .apply (this, arguments);
+    value = propSet.getSpecifiedPropertyValueNS (namespaceURI, localName);
+    switch (value.getExpandedURI ()) {
+    case "urn:x-suika-fam-cx:css:static":
+      var autoVal = new cx.fam.suika.y2005.CSS.Value.IdentValue
                         ("urn:x-suika-fam-cx:css:", null, "auto");
-        propSet.setPropertyValueNS
+      propSet.setPropertyValueNS
               ("urn:x-suika-fam-cx:css:", null, "left", autoVal);
-        propSet.setPropertyValueNS
+      propSet.setPropertyValueNS
               ("urn:x-suika-fam-cx:css:", null, "right", autoVal);
-        propSet.setPropertyValueNS
+      propSet.setPropertyValueNS
               ("urn:x-suika-fam-cx:css:", null, "top", autoVal);
-        propSet.setPropertyValueNS
+      propSet.setPropertyValueNS
               ("urn:x-suika-fam-cx:css:", null, "bottom", autoVal);
-        break;
-      case "urn:x-suika-fam-cx:css:relative":
-        var leftVal = propSet.getSpecifiedPropertyValueNS
+      break;
+    case "urn:x-suika-fam-cx:css:relative":
+      var leftVal = propSet.getSpecifiedPropertyValueNS
                         ("urn:x-suika-fam-cx:css:", "left");
-        if (leftVal.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-            leftVal.getExpandedURI () == "urn:x-suika-fam-cx:css:auto") {
-          var rightVal = propSet.getSpecifiedPropertyValueNS
+      if (leftVal.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
+          leftVal.getExpandedURI () == "urn:x-suika-fam-cx:css:auto") {
+        var rightVal = propSet.getSpecifiedPropertyValueNS
                            ("urn:x-suika-fam-cx:css:", "right");
-          if (rightVal.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-              rightVal.getExpandedURI () == "urn:x-suika-fam-cx:css:auto") {
-            /* left:auto; right:auto */
-            propSet.setPropertyValueNS
+        if (rightVal.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
+            rightVal.getExpandedURI () == "urn:x-suika-fam-cx:css:auto") {
+          /* left:auto; right:auto */
+          propSet.setPropertyValueNS
               ("urn:x-suika-fam-cx:css:", null, "left",
                new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null));
-            propSet.setPropertyValueNS
+          propSet.setPropertyValueNS
               ("urn:x-suika-fam-cx:css:", null, "right",
                new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null));
-          } else {
-            /* left:auto; right:~auto */
-            propSet.setPropertyValueNS
+        } else {
+          /* left:auto; right:~auto */
+          propSet.setPropertyValueNS
               ("urn:x-suika-fam-cx:css:", null, "left",
                new cx.fam.suika.y2005.CSS.Value.NumericValue
                         (-rightVal.getValue (),
                          rightVal.getUnitNamespaceURI (),
                          rightVal.getUnitPrefix (),
                          rightVal.getUnitLocalName ()));
-          }
-        } else {
-          var rightVal = propSet.getSpecifiedPropertyValueNS
+        }
+      } else {
+        var rightVal = propSet.getSpecifiedPropertyValueNS
                            ("urn:x-suika-fam-cx:css:", "right");
-          if (rightVal.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-              rightVal.getExpandedURI () == "urn:x-suika-fam-cx:css:auto") {
-            /* left:~auto; right:auto */
-            propSet.setPropertyValueNS
+        if (rightVal.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
+            rightVal.getExpandedURI () == "urn:x-suika-fam-cx:css:auto") {
+          /* left:~auto; right:auto */
+          propSet.setPropertyValueNS
               ("urn:x-suika-fam-cx:css:", null, "right",
                new cx.fam.suika.y2005.CSS.Value.NumericValue
                         (-leftVal.getValue (),
                          leftVal.getUnitNamespaceURI (),
                          leftVal.getUnitPrefix (),
                          leftVal.getUnitLocalName ()));
-          } else {
-            /* left:~auto; right:~auto -- over-constrained */
-            var dirVal = propSet.getSpecifiedPropertyValueNS
+        } else {
+          /* left:~auto; right:~auto -- over-constrained */
+          var dirVal = propSet.getSpecifiedPropertyValueNS
                            ("urn:x-suika-fam-cx:css:", "direction");
-            if (dirVal.getExpandedURI () == "urn:x-suika-fam-cx:css:ltr") {
-              propSet.setPropertyValueNS
+          if (dirVal.getExpandedURI () == "urn:x-suika-fam-cx:css:ltr") {
+            propSet.setPropertyValueNS
                 ("urn:x-suika-fam-cx:css:", null, "right",
                  new cx.fam.suika.y2005.CSS.Value.NumericValue
                         (-leftVal.getValue (),
                          leftVal.getUnitNamespaceURI (),
                          leftVal.getUnitPrefix (),
                          leftVal.getUnitLocalName ()));
-            } else {
-              propSet.setPropertyValueNS
+          } else {
+            propSet.setPropertyValueNS
                 ("urn:x-suika-fam-cx:css:", null, "left",
                  new cx.fam.suika.y2005.CSS.Value.NumericValue
                         (-rightVal.getValue (),
                          rightVal.getUnitNamespaceURI (),
                          rightVal.getUnitPrefix (),
                          rightVal.getUnitLocalName ()));
-            }
           }
         }
+      }
         
-        var topVal = propSet.getSpecifiedPropertyValueNS
+      var topVal = propSet.getSpecifiedPropertyValueNS
                         ("urn:x-suika-fam-cx:css:", "top");
-        if (topVal.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-            topVal.getExpandedURI () == "urn:x-suika-fam-cx:css:auto") {
-          var bottomVal = propSet.getSpecifiedPropertyValueNS
+      if (topVal.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
+          topVal.getExpandedURI () == "urn:x-suika-fam-cx:css:auto") {
+        var bottomVal = propSet.getSpecifiedPropertyValueNS
                            ("urn:x-suika-fam-cx:css:", "bottom");
-          if (bottomVal.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-              bottomVal.getExpandedURI () == "urn:x-suika-fam-cx:css:auto") {
-            /* top:auto; bottom:auto */
-            propSet.setPropertyValueNS
+        if (bottomVal.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
+            bottomVal.getExpandedURI () == "urn:x-suika-fam-cx:css:auto") {
+          /* top:auto; bottom:auto */
+          propSet.setPropertyValueNS
               ("urn:x-suika-fam-cx:css:", null, "top",
                new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null));
-            propSet.setPropertyValueNS
+          propSet.setPropertyValueNS
               ("urn:x-suika-fam-cx:css:", null, "bottom",
                new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null));
-          } else {
-            /* top:auto; bottom:~auto */
-            propSet.setPropertyValueNS
+        } else {
+          /* top:auto; bottom:~auto */
+          propSet.setPropertyValueNS
               ("urn:x-suika-fam-cx:css:", null, "top",
                new cx.fam.suika.y2005.CSS.Value.NumericValue
                         (-bottomVal.getValue (),
                          bottomVal.getUnitNamespaceURI (),
                          bottomVal.getUnitPrefix (),
                          bottomVal.getUnitLocalName ()));
-          }
-        } else {
-          var bottomVal = propSet.getSpecifiedPropertyValueNS
+        }
+      } else {
+        var bottomVal = propSet.getSpecifiedPropertyValueNS
                            ("urn:x-suika-fam-cx:css:", "bottom");
-          if (bottomVal.getTypeURI == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
-              bottomVal.getExpandedURI () == "urn:x-suika-fam-cx:css:auto") {
-            /* top:~auto; bottom:auto */
-            propSet.setPropertyValueNS
+        if (bottomVal.getTypeURI == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
+            bottomVal.getExpandedURI () == "urn:x-suika-fam-cx:css:auto") {
+          /* top:~auto; bottom:auto */
+          propSet.setPropertyValueNS
               ("urn:x-suika-fam-cx:css:", null, "bottom",
                new cx.fam.suika.y2005.CSS.Value.NumericValue
                         (-topVal.getValue (),
                          topVal.getUnitNamespaceURI (),
                          topVal.getUnitPrefix (),
                          topVal.getUnitLocalName ()));
-          } else {
-            /* top:~auto; bottom:~auto -- over-constrained */
-            propSet.setPropertyValueNS
+        } else {
+          /* top:~auto; bottom:~auto -- over-constrained */
+          propSet.setPropertyValueNS
                 ("urn:x-suika-fam-cx:css:", null, "bottom",
                  new cx.fam.suika.y2005.CSS.Value.NumericValue
                         (-topVal.getValue (),
                          topVal.getUnitNamespaceURI (),
                          topVal.getUnitPrefix (),
                          topVal.getUnitLocalName ()));
-          }
         }
-        break;
       }
+      break;
     }
-  }),
-  "right": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["auto"]
-    ],
-    /* computed value might be amended in |position| computing */
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "auto")
-  }),
-  "top": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["auto"]
-    ],
-    /* computed value might be amended in |position| computing */
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "auto")
-  }),
-  "unicode-bidi": new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["normal"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "normal")
-  }),
-  "vertical-align": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["baseline", "bottom", "middle", "sub",
-                                  "super", "text-bottom", "text-top", "top"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "baseline")
-  }),
-  "visibility": new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["collapse", "visible", "hidden"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "visible")
-  }),
-  "width": new cx.fam.suika.y2005.CSS.Property._PropImpl_Length ({
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:", ["auto"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "auto")
-  })
-};
-cx.fam.suika.y2005.CSS.Property._Prop
-["http://suika.fam.cx/~wakaba/archive/2005/11/css."] = {
-  "display-model": new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
-    /* CSS3 Box model WD */
-    allowedKeyword: [
-      "http://suika.fam.cx/~wakaba/archive/2005/11/css.",
-        ["block-inside", "inline-inside"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
-                    "manakai", "inline-inside"),
-    prefix: "manakai"
-  }),
-  "display-role": new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
-    /* CSS3 Box model WD */
-    allowedKeyword: [
-      "urn:x-suika-fam-cx:css:",
-        ["block", "compact", "inline", "list-item", "none", "run-in",
-         "table", "table-caption", "table-cell", "table-column",
-         "table-column-group", "table-footer-group", "table-header-group",
-         "table-row", "table-row-group"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
-                   ("urn:x-suika-fam-cx:css:", null, "inline"),
-    prefix: "manakai"
-  }),
-  "scroller": new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
+  },
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:absolute": true,
+    "urn:x-suika-fam-cx:css:fixed": true,
+    "urn:x-suika-fam-cx:css:relative": true,
+    "urn:x-suika-fam-cx:css:static": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:line-height"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Length ({
+  inherit: true,
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "normal"),
+  negativeNotAllowed: true,
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:normal": true
+  },
+  validType: {
+    "tag:manakai@suika.fam.cx,2005-11:length": true,
+    "tag:manakai@suika.fam.cx,2005-11:number": true,
+    "tag:manakai@suika.fam.cx,2005-11:percentage": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:right"]
+  = cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:bottom"];
+cx.fam.suika.y2005.CSS.Property.Definition
+["http://suika.fam.cx/~wakaba/archive/2005/11/css.scroller"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
     /* CSS3 Box model WD editor's note */
-    allowedKeyword: [
-      "http://suika.fam.cx/~wakaba/archive/2005/11/css.", ["scrollbar", "invisible"]
-    ],
-    initial: new cx.fam.suika.y2005.CSS.Value.IdentValue
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
                    ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
                     "manakai", "scrollbar"),
-    prefix: "manakai"
-  })
-};
-cx.fam.suika.y2005.CSS.Property._Prop
-["http://suika.fam.cx/~wakaba/archive/2005/11/css.props."] = {
-  "display": new cx.fam.suika.y2005.CSS.Property._PropImpl_Keyword ({
-    parsePropertyValue: function () { return false },
-    setComputedValue: function (ns, _1, ln, _2, propSet, parentPropSet) {
-      var display = propSet.getSpecifiedPropertyValueNS
-                      ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
-                       "display-role");
-      var displayNS = display.getNamespaceURI ();
-      var displayLN = display.getLocalName ();
-      if (displayLN == "none" && displayNS == "urn:x-suika-fam-cx:css:") {
-        return; /* |position| and |float| do not apply */
-      }
-      var position = propSet.getSpecifiedPropertyValueNS
-                      ("urn:x-suika-fam-cx:css:", "position");
-      var positionLN = position.getLocalName ();
-      if ((positionLN == "absolute" || positionLN == "fixed") &&
-          position.getNamespaceURI () == "urn:x-suika-fam-cx:css:") {
-        propSet.setPropertyValueNS
+  prefix: "manakai",
+  validKeyword: {
+    "http://suika.fam.cx/~wakaba/archive/2005/11/css.scrollbar": true,
+    "http://suika.fam.cx/~wakaba/archive/2005/11/css.invisible": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:top"]
+  = cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:bottom"];
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:unicode-bidi"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "normal"),
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:bidi-override": true,
+    "urn:x-suika-fam-cx:css:embed": true,
+    "urn:x-suika-fam-cx:css:normal": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:vertical-align"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "baseline"),
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:baseline": true,
+    "urn:x-suika-fam-cx:css:bottom": true,
+    "urn:x-suika-fam-cx:css:middle": true,
+    "urn:x-suika-fam-cx:css:sub": true,
+    "urn:x-suika-fam-cx:css:super": true,
+    "urn:x-suika-fam-cx:css:text-bottom": true,
+    "urn:x-suika-fam-cx:css:text-top": true,
+    "urn:x-suika-fam-cx:css:top": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:visibility"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "visible"),
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:collapse": true,
+    "urn:x-suika-fam-cx:css:hidden": true,
+    "urn:x-suika-fam-cx:css:visible": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:width"]
+  = cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:height"];
+
+cx.fam.suika.y2005.CSS.Property.Definition
+["http://suika.fam.cx/~wakaba/archive/2005/11/css.props.display"] =
+new cx.fam.suika.y2005.CSS.Property.Definition ({
+  setComputedValue: function (namespaceURI, _1, localName, 
+                              parentPropSet, propSet, _3, elementNode) {
+    var displayVal = propSet.getSpecifiedPropertyValueNS
+                       ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
+                        "display-role");
+    var displayURI = displayVal.getExpandedURI ();
+    if (displayURI == "urn:x-suika-fam-cx:css:none") return;
+      /* |position| and |float| do not apply */
+    var positionVal = propSet.getSpecifiedPropertyValueNS
+                        ("urn:x-suika-fam-cx:css:", "position");
+    switch (positionVal.getExpandedURI ()) {
+    case "urn:x-suika-fam-cx:css:absolute":
+    case "urn:x-suika-fam-cx:css:fixed":
+      propSet.setPropertyValueNS
           ("urn:x-suika-fam-cx:css:", null, "float",
            new cx.fam.suika.y2005.CSS.Value.IdentValue
                  ("urn:x-suika-fam-cx:css:", null, "none"));
-      } else {
-        var floatV = propSet.getSpecifiedPropertyValueNS
+      break;
+    default:
+      var floatVal = propSet.getSpecifiedPropertyValueNS
                        ("urn:x-suika-fam-cx:css:", "float");
-        if (floatV.getLocalName () == "none" &&
-            floatV.getNamespaceURI () == "urn:x-suika-fam-cx:css:" &&
-            parentPropSet != null) {
-          return;
-        }
+      if (floatVal.getExpandedURI () == "urn:x-suika-fam-cx:css:none" &&
+          parentPropSet != null /* not root element */) {
+        return;
       }
-      if (displayNS == "urn:x-suika-fam-cx:css:") {
-        switch (displayLN) {
-        case "inline":
-        case "run-in":
-          propSet.setPropertyValueNS
+      break;
+    }
+    
+    switch (displayURI) {
+    case "urn:x-suika-fam-cx:css:inline":
+    case "urn:x-suika-fam-cx:css:run-in":
+      propSet.setPropertyValueNS
             ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
              "manakai", "display-role",
              new cx.fam.suika.y2005.CSS.Value.IdentValue
                    ("urn:x-suika-fam-cx:css:", null, "block"));
-          var displayModel = propSet.getSpecifiedPropertyValueNS
+      var displayModel = propSet.getSpecifiedPropertyValueNS
                                ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
                                 "display-model");
-          if (displayModel.getNamespaceURI () + displayModel.getLocalName ()
+      if (displayModel.getExpandedURI ()
                 == "http://suika.fam.cx/~wakaba/archive/2005/11/css.inline-inside") {
-            propSet.setPropertyValueNS
+        propSet.setPropertyValueNS
               ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
                "manakai", "display-model",
                new cx.fam.suika.y2005.CSS.Value.IdentValue
@@ -3546,42 +2603,40 @@ cx.fam.suika.y2005.CSS.Property._Prop
               and some fix would be required when CSS3 module on visual formatting
               is revised.
             */
-          }
-          break;
-        //case "inline-block":
-        case "table-row-group":
-        case "table-column":
-        case "table-column-group":
-        case "table-header-group":
-        case "table-footer-group":
-        case "table-row":
-        case "table-cell":
-        case "table-caption":
-          propSet.setPropertyValueNS
+      }
+      break;
+    //case "urn:x-suika-fam-cx:css:inline-block":
+    case "urn:x-suika-fam-cx:css:table-row-group":
+    case "urn:x-suika-fam-cx:css:table-column":
+    case "urn:x-suika-fam-cx:css:table-column-group":
+    case "urn:x-suika-fam-cx:css:table-header-group":
+    case "urn:x-suika-fam-cx:css:table-footer-group":
+    case "urn:x-suika-fam-cx:css:table-row":
+    case "urn:x-suika-fam-cx:css:table-cell":
+    case "urn:x-suika-fam-cx:css:table-caption":
+      propSet.setPropertyValueNS
             ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
              "manakai", "display-role",
              new cx.fam.suika.y2005.CSS.Value.IdentValue
                    ("urn:x-suika-fam-cx:css:", null, "block"));
-          propSet.setPropertyValueNS
+      propSet.setPropertyValueNS
             ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
              "manakai", "display-model",
              new cx.fam.suika.y2005.CSS.Value.IdentValue
                    ("http://suika.fam.cx/~wakaba/archive/2005/11/css.",
                     "manakai", "block-inside"));
-          break;
-        /*case "inline-table":
-          propSet.setPropertyValueNS
+      break;
+    /*case "urn:x-suika-fam-cx:css:inline-table":
+      propSet.setPropertyValueNS
             ("urn:x-suika-fam-cx:css:", null, "display",
              new cx.fam.suika.y2005.CSS.Value.IdentValue
                    ("urn:x-suika-fam-cx:css:", null, "table"));
-          break;*/
-        }
-      }
+      break;*/
     }
-  })
-};
+  }
+});
 
-/* Revision: $Date: 2005/11/07 14:27:03 $ */
+/* Revision: $Date: 2005/11/08 13:58:50 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

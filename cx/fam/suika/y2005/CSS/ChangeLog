@@ -1,3 +1,24 @@
+2005-11-08  Wakaba  <w@suika.fam.cx>
+
+	* Property.js (_SetCascadedValueSet, _ComputeComputedValue,
+	property definitions): Reimplemented using new property definition interface.
+	(CSS.Property.MultiValueSet.getCSSText): Outputs property names.
+	(CSS.Property.MultiValueSet.getSpecifiedPropertyNameList,
+	getSpecifiedPropertyValuesByExpandedURI): New methods.
+	(CSS.Property.MultiValueSet.getSpecifiedPropertyValuesNS): Returns
+	an empty |Array| if no property value is set.
+	(CSS.Property.Definition): |validKeyword1| option introduced.
+	(CSS.Property.Definition.isValidValue): |partial| parameter added.
+	(CSS.Property.Definition_Keyword, CSS.Property.Definition_Length,
+	CSS.Property.Definition_Color, CSS.Property.Definition_Length4,
+	CSS.Property.Definition_Color4): New classes.
+	
+	* SimpleParser.js: Use new property definition interface.
+	Empty selectors were allowed by mistake.
+	
+	* Value.js (getNormalizedValue, getRGBValue, getRGBAValue): New
+	methods.
+
 2005-11-07  Wakaba  <w@suika.fam.cx>
 
 	* Node.js: Requires |CSS.Property| module.

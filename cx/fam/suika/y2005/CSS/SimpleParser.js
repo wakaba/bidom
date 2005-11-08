@@ -269,12 +269,13 @@ function (parentNode) {
           this._TokenStack.push (token);
           var valsrc = pp.parseValueFromTokens
                          (this, prop.namespaceURI, prop.prefix, prop.localName);
-          if (valsrc != null) var priority = this._GetPrioriry ();
+          var priority = valsrc != null ? this._GetPriority () : null;
           if (priority != null) {
             token = this._PopToken ();
             if (!token || token.type == "}") {
               pp.setDeclaredValue (prop.namespaceURI, prop.prefix, prop.localName,
                                    block, valsrc, priority);
+              this._TokenStack.push (token);
               return;
             } else if (token.type == ";") {
               pp.setDeclaredValue (prop.namespaceURI, prop.prefix, prop.localName,
@@ -577,12 +578,12 @@ function (token) {
   } else if (token.type == "HASH") {
     if (token.value.match (/^[0-9A-Fa-f]{6}$/)) {
       return this._Factory.createCSSRGBValue (parseInt (token.value.slice (0, 2), 16),
-                                              parseInt (token.value.slice (2, 2), 16),
-                                              parseInt (token.value.slice (4, 2), 16));
+                                              parseInt (token.value.slice (2, 4), 16),
+                                              parseInt (token.value.slice (4, 6), 16));
     } else if (token.value.match (/^[0-9A-Fa-f]{3}$/)) {
       return this._Factory.createCSSRGBValue (parseInt (token.value.slice (0, 1), 16),
-                                              parseInt (token.value.slice (1, 1), 16),
-                                              parseInt (token.value.slice (2, 1), 16));
+                                              parseInt (token.value.slice (1, 2), 16),
+                                              parseInt (token.value.slice (2, 3), 16));
     }
   }
   this._TokenStack.push (token);
@@ -715,7 +716,11 @@ function () {
             }
           } else if (token.value == "+" || token.value == "~" ||
                      token.value == ">" || token.value == ",") {
-            break SimpleSel;
+            if (ln == null && selseq.getSimpleSelectorLength () == 1) {
+              // Empty (invalid) selector
+            } else {
+              break SimpleSel;
+            }
           } else if (token.value == ":") {
             token = this._PopToken (true);
             if (token != null) {
@@ -852,9 +857,14 @@ function () {
             (this._Factory.createSIDSelector (token.value));
           token = this._PopToken (true);
           continue SimpleSel;
-        } else if (token.type == "S" || token.type == "{" ||
-                   token.type == "}" || token.type == "ATKEYWORD") {
+        } else if (token.type == "S" || token.type == "}") {
           break SimpleSel;
+        } else if (token.type == "{" || token.type == "ATKEYWORD") {
+          if (ln == null && selseq.getSimpleSelectorLength () == 1) {
+            // Empty (invalid) selector
+          } else {
+            break SimpleSel;
+          }
         }
         
         /* Invalid selector */
@@ -1592,7 +1602,7 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._PopChar = function () {
   return ch;
 };
 
-/* Revision: $Date: 2005/11/07 14:27:03 $ */
+/* Revision: $Date: 2005/11/08 13:58:50 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

@@ -970,6 +970,28 @@ cx.fam.suika.y2005.CSS.Value.RGBAValue.prototype.setAlpha = function (newValue) 
   this.alpha = newValue;
 };
 
+/**
+   Returns a normalized variant.
+   [non-standard]
+   
+   @return  A normalized equivalent of the value.  If the value
+            is already normalized, the value itself is returned.
+*/
+cx.fam.suika.y2005.CSS.Value.RGBAValue.prototype.getNormalizedValue = function () {
+  var aval = this.alpha.getValue ();
+  if (aval < 0) {
+    return new cx.fam.suika.y2005.CSS.Value.RGBAValue
+             (this.red, this.green, this.blue,
+              new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null));
+  } else if (aval > 1) {
+    return new cx.fam.suika.y2005.CSS.Value.RGBAValue
+             (this.red, this.green, this.blue,
+              new cx.fam.suika.y2005.CSS.Value.NumericValue (1, null, null, null));
+  } else {
+    return this;
+  }
+};
+
 cx.fam.suika.y2005.CSS.Value.RGBAValue.prototype.getCSSText = function () {
   return 'rgba('
        + this.red.getCSSText () + ", "
@@ -1030,6 +1052,57 @@ cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.getLightness = function () {
   return this.lightness;
 };
 
+/**
+   Returns a normalized variant.
+   [non-standard]
+   
+   @return  A normalized equivalent of the value.  If the value
+            is already normalized, the value itself is returned.
+*/
+cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.getNormalizedValue = function () {
+  var hue = this.hue;
+  var hval = hue.getValue ();
+  if (hval < 0 || hval >= 360) {
+    return new cx.fam.suika.y2005.CSS.Value.HSLValue
+             (new cx.fam.suika.y2005.CSS.Value.NumericValue
+                (hval % 360, null, null, null), this.satuation, this.lightness);
+  } else {
+    return this;
+  }
+};
+
+/**
+   Returns a |RGBValue| equal to the value.
+   [non-standard]
+   
+   @return  A |RGBValue|.
+*/
+cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.getRGBValue = function () {
+  var hue2rgb = function (m1, m2, h) {
+    h = h < 0 ? h + 1 : h > 1 ? h - 1 : h;
+    if (h * 6 < 1) {
+      return m1 + (m2 - m1) * h * 6;
+    } else if (h * 2 < 1) {
+      return m2;
+    } else if (h * 3 < 2) {
+      return m1 + (m2 - m1) * (2/3 - h) * 6;
+    } else {
+      return m1;
+    }
+  };
+  var h = (this.hue.getValue () % 360) / 360;
+  var s = this.saturation.getValue () * 0.01;
+  var l = this.lightness.getValue () * 0.01;
+  var m2 = l <= 0.5 ? l * (s + 1) : l + s - l * s;
+  var m1 = l * 2 - m2;
+  return new cx.fam.suika.y2005.CSS.Value.RGBValue
+             (new cx.fam.suika.y2005.CSS.Value.NumericValue
+                (Math.floor (hue2rgb (m1, m2, h + 1/3) * 255), null, null, null),
+              new cx.fam.suika.y2005.CSS.Value.NumericValue
+                (Math.floor (hue2rgb (m1, m2, h      ) * 255), null, null, null),
+              new cx.fam.suika.y2005.CSS.Value.NumericValue
+                (Math.floor (hue2rgb (m1, m2, h - 1/3) * 255), null, null, null));
+};
 
 cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.getCSSText = function () {
   return 'hsl('
@@ -1067,6 +1140,70 @@ cx.fam.suika.y2005.CSS.Value.HSLAValue.prototype.getAlpha = function () {
 };
 cx.fam.suika.y2005.CSS.Value.HSLAValue.prototype.setAlpha = function (newValue) {
   this.alpha = newValue;
+};
+
+/**
+   Returns a normalized variant.
+   [non-standard]
+   
+   @return  A normalized equivalent of the value.  If the value
+            is already normalized, the value itself is returned.
+*/
+cx.fam.suika.y2005.CSS.Value.HSLAValue.prototype.getNormalizedValue = function () {
+  var hue = this.hue;
+  var hval = hue.getValue ();
+  if (hval < 0 || hval >= 360) {
+    hue = new cx.fam.suika.y2005.CSS.Value.NumericValue (hval % 360, null, null, null);
+  }
+  var aval = this.alpha.getValue ();
+  if (aval < 0) {
+    return new cx.fam.suika.y2005.CSS.Value.HSLAValue
+             (hue, this.satuation, this.lightness,
+              new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null));
+  } else if (aval > 1) {
+    return new cx.fam.suika.y2005.CSS.Value.HSLAValue
+             (hue, this.satuation, this.lightness,
+              new cx.fam.suika.y2005.CSS.Value.NumericValue (1, null, null, null));
+  } else if (hue != this.hue) {
+    return new cx.fam.suika.y2005.CSS.Value.HSLAValue
+             (hue, this.satuation, this.lightness, this.alpha);
+  } else {
+    return this;
+  }
+};
+
+/**
+   Returns a |RGBAValue| equal to the value.
+   [non-standard]
+   
+   @return  A |RGBAValue|.
+*/
+cx.fam.suika.y2005.CSS.Value.HSLAValue.prototype.getRGBAValue = function () {
+  var hue2rgb = function (m1, m2, h) {
+    h = h < 0 ? h + 1 : h > 1 ? h - 1 : h;
+    if (h * 6 < 1) {
+      return m1 + (m2 - m1) * h * 6;
+    } else if (h * 2 < 1) {
+      return m2;
+    } else if (h * 3 < 2) {
+      return m1 + (m2 - m1) * (2/3 - h) * 6;
+    } else {
+      return m1;
+    }
+  };
+  var h = (this.hue.getValue () % 360) / 360;
+  var s = this.saturation.getValue () * 0.01;
+  var l = this.lightness.getValue () * 0.01;
+  var m2 = l <= 0.5 ? l * (s + 1) : l + s - l * s;
+  var m1 = l * 2 - m2;
+  return new cx.fam.suika.y2005.CSS.Value.RGBAValue
+             (new cx.fam.suika.y2005.CSS.Value.NumericValue
+                (Math.floor (hue2rgb (m1, m2, h + 1/3) * 255), null, null, null),
+              new cx.fam.suika.y2005.CSS.Value.NumericValue
+                (Math.floor (hue2rgb (m1, m2, h      ) * 255), null, null, null),
+              new cx.fam.suika.y2005.CSS.Value.NumericValue
+                (Math.floor (hue2rgb (m1, m2, h - 1/3) * 255), null, null, null),
+              this.alpha);
 };
 
 cx.fam.suika.y2005.CSS.Value.HSLAValue.prototype.getCSSText = function () {
@@ -1147,7 +1284,7 @@ cx.fam.suika.y2005.CSS.Value.ValueList.prototype.toString = function () {
   return "[object CSSValueList]";
 };
 
-/* $Date: 2005/11/07 10:47:00 $ */
+/* $Date: 2005/11/08 13:58:50 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.
