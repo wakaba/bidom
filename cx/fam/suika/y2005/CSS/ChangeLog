@@ -1,3 +1,23 @@
+2005-11-09  Wakaba  <w@suika.fam.cx>
+
+	* Property.js: Support for |list-style|, |z-index|, |page-break-*|,
+	|orphans|, |widows|, |background|, |font-style|, |font-variant|,
+	|font-weight|, and |border| added.  Prepares a property set
+	containing initial values before the computation.
+	(_SetInitialValue): New method.
+	(_GetCascadedValueSet): Parameter |propSet| added.
+	(clone): New method.
+	(CSS.Property.Definition_URI): New class.
+	
+	* SimpleParser.js (_GetNextValue): |_ValueStack| introduced.
+	
+	* Value.js (createCSSRGBValue, createHSLValue): Removed.
+	(createCSSRGBAValue): |isPercentage| parameter added.
+	(CSS.Value.RGBValue, CSS.Value.HSLValue): Now they cannot have
+	invalid value or non-normalized value.  They can have alpha value.
+	Attribute names changed.
+	(CSS.Value.RGBAValue, CSS.Value.HSLAValue): Removed.
+
 2005-11-08  Wakaba  <w@suika.fam.cx>
 
 	* Property.js (_SetCascadedValueSet, _ComputeComputedValue,

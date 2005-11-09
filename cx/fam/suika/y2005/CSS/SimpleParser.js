@@ -267,6 +267,7 @@ function (parentNode) {
                    (prop.namespaceURI, prop.localName);
         if (pp.isSupported) {
           this._TokenStack.push (token);
+          this._ValueStack = [];
           var valsrc = pp.parseValueFromTokens
                          (this, prop.namespaceURI, prop.prefix, prop.localName);
           var priority = valsrc != null ? this._GetPriority () : null;
@@ -368,6 +369,10 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._PseudoClassParser
 */
 cx.fam.suika.y2005.CSS.SimpleParser.prototype._GetNextValue =
 function (token) {
+  var nextValue = this._ValueStack.pop ();
+  if (nextValue) {
+    return nextValue;
+  }
   if (token == null) token = this._PopToken (false);
   if (token == null) {
     return null;
@@ -407,7 +412,7 @@ function (token) {
                 token = this._PopToken ();
                 if (!token || token.type == ")") {
                   /* null token is allowed because of CSS error recovering rule */
-                  return this._Factory.createCSSRGBValue (r, g, b);
+                  return this._Factory.createCSSRGBAValue (r, g, b, 1, false);
                 }
               }
             }
@@ -428,10 +433,7 @@ function (token) {
                 token = this._PopToken ();
                 if (!token || token.type == ")") {
                   /* null token is allowed because of CSS error recovering rule */
-                  return this._Factory.createCSSRGBValue
-                         (this._Factory.createCSSNumericValueNS (r, null, null, "%"),
-                          this._Factory.createCSSNumericValueNS (g, null, null, "%"),
-                          this._Factory.createCSSNumericValueNS (b, null, null, "%"));
+                  return this._Factory.createCSSRGBAValue (r, g, b, 1, true);
                 }
               }
             }
@@ -460,7 +462,7 @@ function (token) {
                     token = this._PopToken ();
                     if (!token || token.type == ")") {
                       /* null token is allowed because of CSS error recovering rule */
-                      return this._Factory.createCSSRGBAValue (r, g, b, a);
+                      return this._Factory.createCSSRGBAValue (r, g, b, a, false);
                     }
                   }
                 }
@@ -488,11 +490,7 @@ function (token) {
                     token = this._PopToken ();
                     if (!token || token.type == ")") {
                       /* null token is allowed because of CSS error recovering rule */
-                      return this._Factory.createCSSRGBAValue
-                         (this._Factory.createCSSNumericValueNS (r, null, null, "%"),
-                          this._Factory.createCSSNumericValueNS (g, null, null, "%"),
-                          this._Factory.createCSSNumericValueNS (b, null, null, "%"),
-                          a);
+                      return this._Factory.createCSSRGBAValue (r, g, b, a, true);
                     }
                   }
                 }
@@ -518,7 +516,7 @@ function (token) {
                 token = this._PopToken ();
                 if (!token || token.type == ")") {
                   /* null token is allowed because of CSS error recovering rule */
-                  return this._Factory.createCSSHSLValue (h, s, l);
+                  return this._Factory.createCSSHSLAValue (h, s, l, 1);
                 }
               }
             }
@@ -577,13 +575,15 @@ function (token) {
     }
   } else if (token.type == "HASH") {
     if (token.value.match (/^[0-9A-Fa-f]{6}$/)) {
-      return this._Factory.createCSSRGBValue (parseInt (token.value.slice (0, 2), 16),
-                                              parseInt (token.value.slice (2, 4), 16),
-                                              parseInt (token.value.slice (4, 6), 16));
+      return this._Factory.createCSSRGBAValue (parseInt (token.value.slice (0, 2), 16),
+                                               parseInt (token.value.slice (2, 4), 16),
+                                               parseInt (token.value.slice (4, 6), 16),
+                                               1, false);
     } else if (token.value.match (/^[0-9A-Fa-f]{3}$/)) {
-      return this._Factory.createCSSRGBValue (parseInt (token.value.slice (0, 1), 16),
-                                              parseInt (token.value.slice (1, 2), 16),
-                                              parseInt (token.value.slice (2, 3), 16));
+      return this._Factory.createCSSRGBAValue (parseInt (token.value.slice (0, 1), 16),
+                                               parseInt (token.value.slice (1, 2), 16),
+                                               parseInt (token.value.slice (2, 3), 16),
+                                               1, false);
     }
   }
   this._TokenStack.push (token);
@@ -596,6 +596,7 @@ function (token) {
    of the declaration or not.
 */
 cx.fam.suika.y2005.CSS.SimpleParser.prototype._GetPriority = function () {
+  if (this._ValueStack.length > 0) return null;
   var token = this._PopToken (false);
   var val = null;
   if (token != null && token.type == "DELIM" && token.value == "!") {
@@ -1602,7 +1603,7 @@ cx.fam.suika.y2005.CSS.SimpleParser.prototype._PopChar = function () {
   return ch;
 };
 
-/* Revision: $Date: 2005/11/08 13:58:50 $ */
+/* Revision: $Date: 2005/11/09 09:55:19 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

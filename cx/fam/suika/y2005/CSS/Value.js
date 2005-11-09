@@ -86,84 +86,26 @@ cx.fam.suika.y2005.DOM.Implementation.DOMImplementation._AddFeature
     },
     
     /**
-       Creates a CSS RGB color value.
-       
-       @param red   The red color value.
-       @param green The green color value.
-       @param blue  The blue color value.
-       
-       For ECMAScript binding, |Number| type values can be used
-       as parameters as well as |CSSNumericValue| objects.  They
-       are converted into |CSSNumericValue|s with no unit.
-    */
-    createCSSRGBValue: function (red, green, blue) {
-      if (typeof (red) == "number") {
-        red = new cx.fam.suika.y2005.CSS.Value.NumericValue (red, null, null, null);
-      }
-      if (typeof (green) == "number") {
-        green = new cx.fam.suika.y2005.CSS.Value.NumericValue
-                  (green, null, null, null);
-      }
-      if (typeof (blue) == "number") {
-        blue = new cx.fam.suika.y2005.CSS.Value.NumericValue (blue, null, null, null);
-      }
-      return new cx.fam.suika.y2005.CSS.Value.RGBValue (red, green, blue);
-    },
-    
-    /**
        Creates a CSS RGBA color value.
        
        @param red   The red color value.
        @param green The green color value.
        @param blue  The blue color value.
        @param alpha The alpha value.
-       
-       For ECMAScript binding, |Number| type values can be used
-       as parameters as well as |CSSNumericValue| objects.  They
-       are converted into |CSSNumericValue|s with no unit.
+       @param isPercentage If |red|, |green|, and |blue| is represented in
+                    percentage, |true|, or otherwise |false|.
+       @return  The created RGBA color value, or |null| if parameters are out of range.
     */
-    createCSSRGBAValue: function (red, green, blue, alpha) {
-      if (typeof (red) == "number") {
-        red = new cx.fam.suika.y2005.CSS.Value.NumericValue (red, null, null, null);
+    createCSSRGBAValue: function (red, green, blue, alpha, isPercentage) {
+      if (isPercentage) {
+        if (red < 0 || red > 100 || green < 0 || green > 100 || blue < 0 || blue > 100)
+          return null;
+      } else {
+        if (red < 0 || red > 255 || green < 0 || green > 255 || blue < 0 || blue > 255)
+          return null;
       }
-      if (typeof (green) == "number") {
-        green = new cx.fam.suika.y2005.CSS.Value.NumericValue
-                  (green, null, null, null);
-      }
-      if (typeof (blue) == "number") {
-        blue = new cx.fam.suika.y2005.CSS.Value.NumericValue (blue, null, null, null);
-      }
-      if (typeof (alpha) == "number") {
-        alpha = new cx.fam.suika.y2005.CSS.Value.NumericValue
-                  (alpha, null, null, null);
-      }
-      return new cx.fam.suika.y2005.CSS.Value.RGBAValue (red, green, blue, alpha);
-    },
-    
-    /**
-       Creates a CSS HSL color value.
-       
-       @param hue        The hue value.
-       @param saturation The saturation value.
-       @param lightness  The lightness value.
-       
-       For ECMAScript binding, |Number| type values can be used
-       as parameters as well as |CSSNumericValue| objects.  They
-       are converted into |CSSNumericValue|s with no unit or of percentage.
-    */
-    createCSSHSLValue: function (hue, saturation, lightness) {
-      if (typeof (hue) == "number") {
-        hue = new cx.fam.suika.y2005.CSS.Value.NumericValue (hue, null, null, null);
-      }
-      if (typeof (saturation) == "number") {
-        saturation = new cx.fam.suika.y2005.CSS.Value.NumericValue
-                  (saturation, null, null, "%");
-      }
-      if (typeof (lightness) == "number") {
-        lightness = new cx.fam.suika.y2005.CSS.Value.NumericValue
-                  (lightness, null, null, "%");
-      }
-      return new cx.fam.suika.y2005.CSS.Value.HSLValue (hue, saturation, lightness);
+      return new cx.fam.suika.y2005.CSS.Value.RGBValue
+                   (red, green, blue, alpha, isPercentage);
     },
     
     /**
@@ -173,28 +115,13 @@ cx.fam.suika.y2005.DOM.Implementation.DOMImplementation._AddFeature
        @param saturation The saturation value.
        @param lightness  The lightness value.
        @param alpha      The alpha value.
-       
-       For ECMAScript binding, |Number| type values can be used
-       as parameters as well as |CSSNumericValue| objects.  They
-       are converted into |CSSNumericValue|s with no unit or of percentage.
+       @return  The created HSLA color value, or |null| if parameters are out of range.
     */
     createCSSHSLAValue: function (hue, saturation, lightness, alpha) {
-      if (typeof (hue) == "number") {
-        hue = new cx.fam.suika.y2005.CSS.Value.NumericValue (hue, null, null, null);
+      if (saturation < 0 || saturation > 100 || lightness < 0 || lightness > 100) {
+        return null;
       }
-      if (typeof (saturation) == "number") {
-        saturation = new cx.fam.suika.y2005.CSS.Value.NumericValue
-                  (saturation, null, null, "%");
-      }
-      if (typeof (lightness) == "number") {
-        lightness = new cx.fam.suika.y2005.CSS.Value.NumericValue
-                  (lightness, null, null, "%");
-      }
-      if (typeof (alpha) == "number") {
-        alpha = new cx.fam.suika.y2005.CSS.Value.NumericValue
-                  (alpha, null, null, null);
-      }
-      return new cx.fam.suika.y2005.CSS.Value.HSLAValue
+      return new cx.fam.suika.y2005.CSS.Value.HSLValue
                (hue, saturation, lightness, alpha);
     },
     
@@ -864,7 +791,7 @@ cx.fam.suika.y2005.CSS.Value.URIValue.prototype.getValue = function () {
 };
 
 
-cx.fam.suika.y2005.CSS.Value.StringValue.prototype.getCSSText = function () {
+cx.fam.suika.y2005.CSS.Value.URIValue.prototype.getCSSText = function () {
   return 'url('
        + this.value.replace (/([\u000A\u000C"'()\\]|\u000D\u000A)/g,
                              function (c) { return "\\" + c })
@@ -878,20 +805,29 @@ cx.fam.suika.y2005.CSS.Value.URIValue.prototype.toString = function () {
 
 
 /**
-   Interface |CSSRGBValue| extends |RGBColor|
+   Class |CSS.Value.RGBValue|
+   
+   A |CSS.Value.RGBValue| object represents a RGB color value,
+   either in integer or in percentage, with optional alpha value.
 */
-cx.fam.suika.y2005.CSS.Value.RGBValue = function (r, g, b) {
+cx.fam.suika.y2005.CSS.Value.RGBValue = function (r, g, b, a, isPercentage) {
+  this.alpha = a > 1 ? 1 : a < 0 ? 0 : a;
   cx.fam.suika.y2005.CSS.Value.RGBValue._superclass.apply
-    (this, ["urn:x-suika-fam-cx:css:", null, "rgb"]);
+    (this, ["urn:x-suika-fam-cx:css:", null, this.alpha == 1 ? "rgb" : "rgba"]);
   this.red = r;
   this.green = g;
   this.blue = b;
+  this.isPercentage = isPercentage;
 };
 cx.fam.suika.y2005.CSS.Value.RGBValue.inherits
   (cx.fam.suika.y2005.CSS.Value.FunctionValue);
 
 cx.fam.suika.y2005.CSS.Value.RGBValue.prototype.getPrimitiveType = function () {
-  return this.CSS_RGBCOLOR;
+  if (this.a == 1) {
+    return this.CSS_RGBCOLOR;
+  } else {
+    return this.CSS_UNKNOWN;
+  }
 };
 
 cx.fam.suika.y2005.CSS.Value.RGBValue.prototype.matchTypeURI =
@@ -908,31 +844,68 @@ function (typeURI) {
 /**
    The red color value.
 */
-cx.fam.suika.y2005.CSS.Value.RGBValue.prototype.getRed = function () {
+cx.fam.suika.y2005.CSS.Value.RGBValue.prototype.getR = function () {
   return this.red;
 };
 
 /**
    The green color value.
 */
-cx.fam.suika.y2005.CSS.Value.RGBValue.prototype.getGreen = function () {
+cx.fam.suika.y2005.CSS.Value.RGBValue.prototype.getG = function () {
   return this.green;
 };
 
 /**
    The blue color value.
 */
-cx.fam.suika.y2005.CSS.Value.RGBValue.prototype.getBlue = function () {
+cx.fam.suika.y2005.CSS.Value.RGBValue.prototype.getB = function () {
   return this.blue;
 };
 
+/**
+   The alpha value.
+*/
+cx.fam.suika.y2005.CSS.Value.RGBValue.prototype.getA = function () {
+  return this.blue;
+};
+
+/**
+   The unit of the color values.  If color values are in percentage, |%|.
+   Otherwise, |null|.
+   [non-standard]
+*/
+cx.fam.suika.y2005.CSS.Value.RGBValue.prototype.getUnitExpandedURI = function () {
+  return this.isPercentage ? "%" : null;
+};
+
+cx.fam.suika.y2005.CSS.Value.RGBValue.prototype.getUnitLocalName = function () {
+  return this.isPercentage ? "%" : null;
+};
+
+cx.fam.suika.y2005.CSS.Value.RGBValue.prototype.getUnitNamespaceURI = function () {
+  return null;
+};
+
+cx.fam.suika.y2005.CSS.Value.RGBValue.prototype.getUnitPrefix = function () {
+  return null;
+};
 
 cx.fam.suika.y2005.CSS.Value.RGBValue.prototype.getCSSText = function () {
-  return 'rgb('
-       + this.red.getCSSText () + ", "
-       + this.green.getCSSText () + ", "
-       + this.blue.getCSSText ()
+  var unit = this.isPercentage ? "%" : "";
+  if (this.alpha == 1) {
+    return 'rgb('
+       + this.red + unit + ", "
+       + this.green + unit + ", "
+       + this.blue + unit
        + ')';
+  } else {
+    return 'rgba('
+       + this.red + unit + ", "
+       + this.green + unit + ", "
+       + this.blue + unit + ", "
+       + this.alpha
+       + ')';
+  }
 };
 /* Not implemented: |setCSSText| */
 
@@ -942,78 +915,16 @@ cx.fam.suika.y2005.CSS.Value.RGBValue.prototype.toString = function () {
 
 
 /**
-   Interface |CSSRGBAValue| extends |CSSRGBValue|
-*/
-cx.fam.suika.y2005.CSS.Value.RGBAValue = function (r, g, b, a) {
-  cx.fam.suika.y2005.CSS.Value.FunctionValue.apply
-    (this, ["urn:x-suika-fam-cx:css:", null, "rgba"]);
-  this.red = r;
-  this.green = g;
-  this.blue = b;
-  this.alpha = a;
-};
-cx.fam.suika.y2005.CSS.Value.RGBAValue.inherits
-  (cx.fam.suika.y2005.CSS.Value.RGBValue);
-
-cx.fam.suika.y2005.CSS.Value.RGBAValue.prototype.getPrimitiveType = function () {
-  return this.CSS_UNKNOWN;
-};
-
-/**
-   The alpha value.
-   [non-standard]
-*/
-cx.fam.suika.y2005.CSS.Value.RGBAValue.prototype.getAlpha = function () {
-  return this.alpha;
-};
-cx.fam.suika.y2005.CSS.Value.RGBAValue.prototype.setAlpha = function (newValue) {
-  this.alpha = newValue;
-};
-
-/**
-   Returns a normalized variant.
-   [non-standard]
+   Class |CSS.Value.HSLValue|
    
-   @return  A normalized equivalent of the value.  If the value
-            is already normalized, the value itself is returned.
+   A |CSS.Value.HSLValue| object represents a HSL color with optional
+   alpha value.
 */
-cx.fam.suika.y2005.CSS.Value.RGBAValue.prototype.getNormalizedValue = function () {
-  var aval = this.alpha.getValue ();
-  if (aval < 0) {
-    return new cx.fam.suika.y2005.CSS.Value.RGBAValue
-             (this.red, this.green, this.blue,
-              new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null));
-  } else if (aval > 1) {
-    return new cx.fam.suika.y2005.CSS.Value.RGBAValue
-             (this.red, this.green, this.blue,
-              new cx.fam.suika.y2005.CSS.Value.NumericValue (1, null, null, null));
-  } else {
-    return this;
-  }
-};
-
-cx.fam.suika.y2005.CSS.Value.RGBAValue.prototype.getCSSText = function () {
-  return 'rgba('
-       + this.red.getCSSText () + ", "
-       + this.green.getCSSText () + ", "
-       + this.blue.getCSSText () + ", "
-       + this.alpha.getCSSText ()
-       + ')';
-};
-/* Not implemented: |setCSSText| */
-
-cx.fam.suika.y2005.CSS.Value.RGBAValue.prototype.toString = function () {
-  return "[object CSSRGBAValue]";
-};
-
-
-/**
-   Interface |CSSHSLValue|
-*/
-cx.fam.suika.y2005.CSS.Value.HSLValue = function (h, s, l) {
+cx.fam.suika.y2005.CSS.Value.HSLValue = function (h, s, l, a) {
+  this.alpha = a > 1 ? 1 : a < 0 ? 0 : a;
   cx.fam.suika.y2005.CSS.Value.HSLValue._superclass.apply
-    (this, ["urn:x-suika-fam-cx:css:", null, "hsl"]);
-  this.hue = h;
+    (this, ["urn:x-suika-fam-cx:css:", null, this.alpha == 1 ? "hsl" : "hsla"]);
+  this.hue = h % 360;
   this.saturation = s;
   this.lightness = l;
 };
@@ -1034,50 +945,38 @@ function (typeURI) {
 /**
    The hue value.
 */
-cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.getHue = function () {
+cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.getH = function () {
   return this.hue;
 };
 
 /**
    The saturation value.
 */
-cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.getSaturation = function () {
+cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.getS = function () {
   return this.saturation;
 };
 
 /**
    The lightness value.
 */
-cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.getLightness = function () {
+cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.getL = function () {
   return this.lightness;
 };
 
 /**
-   Returns a normalized variant.
-   [non-standard]
-   
-   @return  A normalized equivalent of the value.  If the value
-            is already normalized, the value itself is returned.
+   The alpha value.
 */
-cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.getNormalizedValue = function () {
-  var hue = this.hue;
-  var hval = hue.getValue ();
-  if (hval < 0 || hval >= 360) {
-    return new cx.fam.suika.y2005.CSS.Value.HSLValue
-             (new cx.fam.suika.y2005.CSS.Value.NumericValue
-                (hval % 360, null, null, null), this.satuation, this.lightness);
-  } else {
-    return this;
-  }
+cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.getA = function () {
+  return this.alpha;
 };
 
 /**
-   Returns a |RGBValue| equal to the value.
+   Returns a |CSS.Value.RGBValue| equal to the value.
    [non-standard]
    
-   @return  A |RGBValue|.
+   @return  A |CSS.Value.RGBValue|.
 */
-cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.getRGBValue = function () {
+cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.getRGBAValue = function () {
   var hue2rgb = function (m1, m2, h) {
     h = h < 0 ? h + 1 : h > 1 ? h - 1 : h;
     if (h * 6 < 1) {
@@ -1090,134 +989,38 @@ cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.getRGBValue = function () {
       return m1;
     }
   };
-  var h = (this.hue.getValue () % 360) / 360;
-  var s = this.saturation.getValue () * 0.01;
-  var l = this.lightness.getValue () * 0.01;
+  var h = this.hue / 360;
+  var s = this.saturation * 0.01;
+  var l = this.lightness * 0.01;
   var m2 = l <= 0.5 ? l * (s + 1) : l + s - l * s;
   var m1 = l * 2 - m2;
   return new cx.fam.suika.y2005.CSS.Value.RGBValue
-             (new cx.fam.suika.y2005.CSS.Value.NumericValue
-                (Math.floor (hue2rgb (m1, m2, h + 1/3) * 255), null, null, null),
-              new cx.fam.suika.y2005.CSS.Value.NumericValue
-                (Math.floor (hue2rgb (m1, m2, h      ) * 255), null, null, null),
-              new cx.fam.suika.y2005.CSS.Value.NumericValue
-                (Math.floor (hue2rgb (m1, m2, h - 1/3) * 255), null, null, null));
+               (Math.floor (hue2rgb (m1, m2, h + 1/3) * 255),
+                Math.floor (hue2rgb (m1, m2, h      ) * 255),
+                Math.floor (hue2rgb (m1, m2, h - 1/3) * 255),
+                this.alpha);
 };
 
 cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.getCSSText = function () {
-  return 'hsl('
-       + this.hue.getCSSText () + ", "
-       + this.saturation.getCSSText () + ", "
-       + this.lightness.getCSSText ()
+  if (this.alpha == 1) {
+    return 'hsl('
+       + this.hue + ", "
+       + this.saturation + "%, "
+       + this.lightness + "%"
        + ')';
+  } else {
+    return 'hsla('
+       + this.hue + ", "
+       + this.saturation + "%, "
+       + this.lightness + "%, "
+       + this.alpha
+       + ')';
+  }
 };
 /* Not implemented: |setCSSText| */
 
 cx.fam.suika.y2005.CSS.Value.HSLValue.prototype.toString = function () {
   return "[object CSSHSLValue]";
-};
-
-
-/**
-   Interface |CSSHSLAValue| extends |CSSHSLValue|
-*/
-cx.fam.suika.y2005.CSS.Value.HSLAValue = function (h, s, l, a) {
-  cx.fam.suika.y2005.CSS.Value.FunctionValue.apply
-    (this, ["urn:x-suika-fam-cx:css:", null, "hsla"]);
-  this.hue = h;
-  this.saturation = s;
-  this.lightness = l;
-  this.alpha = a;
-};
-cx.fam.suika.y2005.CSS.Value.HSLAValue.inherits
-  (cx.fam.suika.y2005.CSS.Value.HSLValue);
-
-/**
-   The alpha value.
-*/
-cx.fam.suika.y2005.CSS.Value.HSLAValue.prototype.getAlpha = function () {
-  return this.alpha;
-};
-cx.fam.suika.y2005.CSS.Value.HSLAValue.prototype.setAlpha = function (newValue) {
-  this.alpha = newValue;
-};
-
-/**
-   Returns a normalized variant.
-   [non-standard]
-   
-   @return  A normalized equivalent of the value.  If the value
-            is already normalized, the value itself is returned.
-*/
-cx.fam.suika.y2005.CSS.Value.HSLAValue.prototype.getNormalizedValue = function () {
-  var hue = this.hue;
-  var hval = hue.getValue ();
-  if (hval < 0 || hval >= 360) {
-    hue = new cx.fam.suika.y2005.CSS.Value.NumericValue (hval % 360, null, null, null);
-  }
-  var aval = this.alpha.getValue ();
-  if (aval < 0) {
-    return new cx.fam.suika.y2005.CSS.Value.HSLAValue
-             (hue, this.satuation, this.lightness,
-              new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, null));
-  } else if (aval > 1) {
-    return new cx.fam.suika.y2005.CSS.Value.HSLAValue
-             (hue, this.satuation, this.lightness,
-              new cx.fam.suika.y2005.CSS.Value.NumericValue (1, null, null, null));
-  } else if (hue != this.hue) {
-    return new cx.fam.suika.y2005.CSS.Value.HSLAValue
-             (hue, this.satuation, this.lightness, this.alpha);
-  } else {
-    return this;
-  }
-};
-
-/**
-   Returns a |RGBAValue| equal to the value.
-   [non-standard]
-   
-   @return  A |RGBAValue|.
-*/
-cx.fam.suika.y2005.CSS.Value.HSLAValue.prototype.getRGBAValue = function () {
-  var hue2rgb = function (m1, m2, h) {
-    h = h < 0 ? h + 1 : h > 1 ? h - 1 : h;
-    if (h * 6 < 1) {
-      return m1 + (m2 - m1) * h * 6;
-    } else if (h * 2 < 1) {
-      return m2;
-    } else if (h * 3 < 2) {
-      return m1 + (m2 - m1) * (2/3 - h) * 6;
-    } else {
-      return m1;
-    }
-  };
-  var h = (this.hue.getValue () % 360) / 360;
-  var s = this.saturation.getValue () * 0.01;
-  var l = this.lightness.getValue () * 0.01;
-  var m2 = l <= 0.5 ? l * (s + 1) : l + s - l * s;
-  var m1 = l * 2 - m2;
-  return new cx.fam.suika.y2005.CSS.Value.RGBAValue
-             (new cx.fam.suika.y2005.CSS.Value.NumericValue
-                (Math.floor (hue2rgb (m1, m2, h + 1/3) * 255), null, null, null),
-              new cx.fam.suika.y2005.CSS.Value.NumericValue
-                (Math.floor (hue2rgb (m1, m2, h      ) * 255), null, null, null),
-              new cx.fam.suika.y2005.CSS.Value.NumericValue
-                (Math.floor (hue2rgb (m1, m2, h - 1/3) * 255), null, null, null),
-              this.alpha);
-};
-
-cx.fam.suika.y2005.CSS.Value.HSLAValue.prototype.getCSSText = function () {
-  return 'hsla('
-       + this.hue.getCSSText () + ", "
-       + this.saturation.getCSSText () + ", "
-       + this.lightness.getCSSText () + ", "
-       + this.alpha.getCSSText ()
-       + ')';
-};
-/* Not implemented: |setCSSText| */
-
-cx.fam.suika.y2005.CSS.Value.HSLAValue.prototype.toString = function () {
-  return "[object CSSHSLAValue]";
 };
 
 
@@ -1284,7 +1087,7 @@ cx.fam.suika.y2005.CSS.Value.ValueList.prototype.toString = function () {
   return "[object CSSValueList]";
 };
 
-/* $Date: 2005/11/08 13:58:50 $ */
+/* $Date: 2005/11/09 09:55:19 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.

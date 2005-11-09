@@ -93,24 +93,7 @@ function (authorStyleSheetList, rootElement, mediaManager) {
                (authorStyleSheetList, mediaManager);
   var usss = this._GetEnabledCSSStyleSheets (this.userStyleSheetList, mediaManager);
 
-  var els = [[rootElement]];
-  while (els.length > 0) {
-    var el = els.pop ();
-    
-    /* Gets a set of rule sets applied to an element */
-    var uadecls = this._GetStyleDeclarationsForElement (uass, el[0], mediaManager);
-    var audecls = this._GetStyleDeclarationsForElement (auss, el[0], mediaManager);
-    /* TODO: inline and override style sheets support */
-    var usdecls = this._GetStyleDeclarationsForElement (usss, el[0], mediaManager);
-  
-    /* TODO: pseudo element support */
-    uadecls = uadecls[""] != null ? uadecls[""][1] : [];
-    audecls = audecls[""] != null ? audecls[""][1] : [];
-    usdecls = usdecls[""] != null ? usdecls[""][1] : [];
-    
-    /* Gets a set of computed values for an element */
-    var vals = this._GetCascadedValueSet (uadecls, usdecls, audecls, [], mediaManager);
-    var proplist =
+  var propList =
       [
        ["urn:x-suika-fam-cx:css:", "clear"],
        ["urn:x-suika-fam-cx:css:", "direction"],
@@ -122,6 +105,21 @@ function (authorStyleSheetList, rootElement, mediaManager) {
        ["urn:x-suika-fam-cx:css:", "overflow-y"], /* after |overflow-x| */
        ["http://suika.fam.cx/~wakaba/archive/2005/11/css.", "scroller"],
        ["urn:x-suika-fam-cx:css:", "visibility"],
+       ["urn:x-suika-fam-cx:css:", "z-index"],
+       ["urn:x-suika-fam-cx:css:", "list-style-type"],
+       ["urn:x-suika-fam-cx:css:", "list-style-image"],
+       ["urn:x-suika-fam-cx:css:", "list-style-position"],
+       ["urn:x-suika-fam-cx:css:", "page-break-after"],
+       ["urn:x-suika-fam-cx:css:", "page-break-before"],
+       ["urn:x-suika-fam-cx:css:", "page-break-inside"],
+       ["urn:x-suika-fam-cx:css:", "orphans"],
+       ["urn:x-suika-fam-cx:css:", "widows"],
+       ["urn:x-suika-fam-cx:css:", "background-image"],
+       ["urn:x-suika-fam-cx:css:", "background-repeat"],
+       ["urn:x-suika-fam-cx:css:", "background-attachment"],
+       ["urn:x-suika-fam-cx:css:", "font-style"],
+       ["urn:x-suika-fam-cx:css:", "font-variant"],
+       ["urn:x-suika-fam-cx:css:", "font-weight"],
        
        /* <length> - after |font-size| */
        ["urn:x-suika-fam-cx:css:", "height"],
@@ -144,6 +142,8 @@ function (authorStyleSheetList, rootElement, mediaManager) {
        ["urn:x-suika-fam-cx:css:", "margin-left"],
        ["urn:x-suika-fam-cx:css:", "margin-right"],
        ["urn:x-suika-fam-cx:css:", "margin-top"],
+       ["http://suika.fam.cx/~wakaba/archive/2005/11/css.", "background-position-x"],
+       ["http://suika.fam.cx/~wakaba/archive/2005/11/css.", "background-position-y"],
        
        ["urn:x-suika-fam-cx:css:", "position"],
          /* after |top|, |bottom|, |right|, |left|, |direction| */
@@ -156,11 +156,14 @@ function (authorStyleSheetList, rootElement, mediaManager) {
        ["urn:x-suika-fam-cx:css:", "border-left-color"],
        ["urn:x-suika-fam-cx:css:", "border-right-color"],
        ["urn:x-suika-fam-cx:css:", "border-top-color"],
+       ["urn:x-suika-fam-cx:css:", "background-color"],
          /* after |color| */
+         
        ["urn:x-suika-fam-cx:css:", "border-bottom-style"],
        ["urn:x-suika-fam-cx:css:", "border-left-style"],
        ["urn:x-suika-fam-cx:css:", "border-right-style"],
        ["urn:x-suika-fam-cx:css:", "border-top-style"],
+       
        ["urn:x-suika-fam-cx:css:", "border-bottom-width"],
        ["urn:x-suika-fam-cx:css:", "border-left-width"],
        ["urn:x-suika-fam-cx:css:", "border-right-width"],
@@ -168,20 +171,44 @@ function (authorStyleSheetList, rootElement, mediaManager) {
          /* after |font-size| and |border-*-style| */
        
        ["urn:x-suika-fam-cx:css:", "opacity"]
-      ];
-                  /* mediaManager._GetSupportedPropertyNameList */
-    this._ComputeSpecifiedValue (proplist, vals, el[1], mediaManager);
-    this._ComputeComputedValue (proplist, el[1], vals, el[0]);
-    el[0]._SetComputedValueSetForMedia (vals, mediaManager);
+      ]; /* mediaManager._GetSupportedPropertyNameList */
+
+  /* Prepares a property set initially containing initial values */
+  var initialValueSet = new cx.fam.suika.y2005.CSS.Property.PropertySet ();
+  this._SetInitialValues (propList, initialValueSet);
+
+  /* For each elements (in depth first order), ... */
+  var els = [[rootElement]];
+  while (els.length > 0) {
+    var el = els.pop ();
     
+    /* Gets a set of rule sets applied to an element */
+    var uadecls = this._GetStyleDeclarationsForElement (uass, el[0], mediaManager);
+    var audecls = this._GetStyleDeclarationsForElement (auss, el[0], mediaManager);
+    /* TODO: inline and override style sheets support */
+    var usdecls = this._GetStyleDeclarationsForElement (usss, el[0], mediaManager);
+  
+    /* TODO: pseudo element support */
+    uadecls = uadecls[""] != null ? uadecls[""][1] : [];
+    audecls = audecls[""] != null ? audecls[""][1] : [];
+    usdecls = usdecls[""] != null ? usdecls[""][1] : [];
+    
+    /* Gets a set of computed values for an element */
+    var propSet = initialValueSet.clone ();
+    this._GetCascadedValueSet (uadecls, usdecls, audecls, [], mediaManager, propSet);
+    this._ComputeSpecifiedValue (propList, el[1], propSet, mediaManager);
+    this._ComputeComputedValue (propList, el[1], propSet, el[0]);
+    el[0]._SetComputedValueSetForMedia (propSet, mediaManager);
+    
+    /* For children... */
     var elcs = el[0].getChildNodes ();
     var elcsl = elcs.getLength ();
     for (var i = 0; i < elcsl; i++) {
       var elc = elcs.item (i);
       if (elc.getNodeType () == elc.ELEMENT_NODE) {
-        els.push ([elc, vals]);
+        els.push ([elc, propSet]);
       }
-      /* TODO: entity reference node */
+      /* Note.  Entity reference nodes are not supported. */
     }
   }
 };
@@ -261,6 +288,31 @@ function (styleSheetList, elementNode, mediaManager) {
 };
 
 /**
+   Sets initial values of properties to a property set.
+   
+   @param propList  An array that contains arrays of namespace URI and
+                    local name pairs, which indicates what properties should
+                    be set their specified values.  Note that the order
+                    is *not* significant for this method.
+   @param propSet   A property set.
+*/
+cx.fam.suika.y2005.CSS.Property.Computer.prototype._SetInitialValues =
+function (propList, propSet) {
+  for (var i in propList) {
+    var pn = propList[i];
+    if (pn[0] == "http://suika.fam.cx/~wakaba/archive/2005/11/css.props.") {
+      /* Dummy properties */
+      continue;
+    } else {
+      var propDef = cx.fam.suika.y2005.CSS.Property.getPropertyDefinition
+                      (pn[0], pn[1]);
+      propSet.setPropertyValueNS
+          (pn[0], propDef.prefix, pn[1], propDef.initialValue);
+    }
+  }
+};
+
+/**
    Returns a set of cascaded property values.  This method
    receives four inputs of |_GetStyleDeclarationsForElement|'s result format
    and returns a |CSSPropertyDeclaration| object.
@@ -269,18 +321,19 @@ function (styleSheetList, elementNode, mediaManager) {
    @param userDeclarations       A list of declarations from user style sheets.
    @param authorDeclarations     A list of declarations from author style sheets.
    @param overrideDeclarations   A list of declarations from override style sheets.
-   @param mediaManager           The layout engine for which the cascaded value
+   @param renderingEngine        The layout engine for which the cascaded value
                                  is computed.  It is expected that the engine
                                  provides information on whether a particular
                                  value, e.g. |rgba()| is supported in the engine
                                  or not.  If a declared value is not supported,
                                  then the value is ignored as per the forward
                                  compatible rule of CSS.
-   @return A set of properties as a |CSSPropertyDeclaration| object.
+   @param propSet                The property set to which properties are set.
+   @return                       |propSet|.
 */
 cx.fam.suika.y2005.CSS.Property.Computer.prototype._GetCascadedValueSet =
 function (userAgentDeclarations, userDeclarations,
-          authorDeclarations, overrideDeclarations) {
+          authorDeclarations, overrideDeclarations, renderingEngine, propSet) {
   var props1 = [];
   var props2 = [];
   var props3 = [];
@@ -365,7 +418,6 @@ function (userAgentDeclarations, userDeclarations,
     }
   }
   
-  var propSet = new cx.fam.suika.y2005.CSS.Property.PropertySet ();
   for (var i = 0; i < props2.length; i++) { props1.push (props2[i]) }
   for (var i = 0; i < props3.length; i++) { props1.push (props3[i]) }
   for (var i in props1) {
@@ -390,14 +442,14 @@ function (userAgentDeclarations, userDeclarations,
                     local name pairs, which indicates what properties should
                     be set their specified values.  Note that the order
                     is *not* significant for this method.
-   @param propSet   A property set containing cascaded values.
    @param parentPropSet A property set containing computed values of the
                     parent element, if any, or |null|.
+   @param propSet   A property set containing cascaded values.
    @param mediaManager A media manager.
                         ISSUE: Is this parameter necessary?
 */
 cx.fam.suika.y2005.CSS.Property.Computer.prototype._ComputeSpecifiedValue =
-function (propList, propSet, parentPropSet, mediaManager) {
+function (propList, parentPropSet, propSet, mediaManager) {
   for (var i in propList) {
     var pn = propList[i];
     if (pn[0] == "http://suika.fam.cx/~wakaba/archive/2005/11/css.props.") {
@@ -413,8 +465,9 @@ function (propList, propSet, parentPropSet, mediaManager) {
           (pn[0], propDef.prefix,
            pn[1], parentPropSet.getSpecifiedPropertyValueNS (pn[0], pn[1]));
       } else {
-        propSet.setPropertyValueNS
-          (pn[0], propDef.prefix, pn[1], propDef.initialValue);
+        // Set by |_SetInitialValues|
+        //propSet.setPropertyValueNS
+        //  (pn[0], propDef.prefix, pn[1], propDef.initialValue);
       }
     }
   }
@@ -455,6 +508,24 @@ function (propList, parentPropSet, propSet, elementNode) {
 */
 cx.fam.suika.y2005.CSS.Property.PropertySet = function () {
   this.v = {};
+};
+
+/**
+   Creates a clone.
+   [non-standard]
+   
+       Note.  Property values are not cloned but references to thems
+              are copied.
+
+   @return  A cloned |CSS.Property.PropertySet|.
+*/
+cx.fam.suika.y2005.CSS.Property.PropertySet.prototype.clone =
+function () {
+  var r = new cx.fam.suika.y2005.CSS.Property.PropertySet ();
+  for (var i in this.v) {
+    r.v[i] = this.v[i];
+  }
+  return r;
 };
 
 /**
@@ -1166,8 +1237,14 @@ function (namespaceURI, prefix, localName, parentPropSet, propSet, value,
     /* TODO: resolve relative length */
     break;
   case "tag:manakai@suika.fam.cx,2005-11:IDENT":
-    cx.fam.suika.y2005.CSS.Property.Definition_Length._super.setComputedValue.apply
-      (this, arguments);
+    var xuri = value.getExpandedURI ();
+    if (this.validKeyword[xuri].computedValue) {
+      propSet.setPropertyValueNS (namespaceURI, prefix, localName, 
+                                  this.validKeyword[xuri].computedValue);
+    } else {
+      cx.fam.suika.y2005.CSS.Property.Definition_Length._super.setComputedValue.apply
+        (this, arguments);
+    }
     return;
   }
   /* unchange */
@@ -1195,8 +1272,14 @@ function (parser, namespaceURI, prefix, localName) {
   case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
   case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
   case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
-  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
     var values = [value, value, value, value];
+    break;
+  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    if (this.validKeyword1[value.getExpandedURI ()]) {
+      var values = [value];
+    } else {
+      var values = [value, value, value, value];
+    }
     break;
   default:
     return null;
@@ -1204,11 +1287,16 @@ function (parser, namespaceURI, prefix, localName) {
   
   value = parser._GetNextValue ();
   if (value == null) return values;
+  if (values.length == 1) return null;
   switch (value.getTypeURI ()) {
   case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
   case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
   case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+    values[1] = value;
+    values[3] = value;
+    break;
   case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    if (this.validKeyword1[value.getExpandedURI ()]) return null;
     values[1] = value;
     values[3] = value;
     break;
@@ -1222,7 +1310,10 @@ function (parser, namespaceURI, prefix, localName) {
   case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
   case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
   case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+    values[2] = value;
+    break;
   case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    if (this.validKeyword1[value.getExpandedURI ()]) return null;
     values[2] = value;
     break;
   default:
@@ -1235,7 +1326,10 @@ function (parser, namespaceURI, prefix, localName) {
   case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
   case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
   case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+    values[3] = value;
+    return values;
   case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    if (this.validKeyword1[value.getExpandedURI ()]) return null;
     values[3] = value;
     return values;
   default:
@@ -1334,93 +1428,7 @@ cx.fam.suika.y2005.CSS.Property.Definition_Color.prototype.isValidValue =
 function (namespaceURI, localName, value, partial) {
   switch (value.getTypeURI ()) {
   case "tag:manakai@suika.fam.cx,2005-11:FUNCTION":
-    switch (value.getFunctionExpandedURI ()) {
-    case "urn:x-suika-fam-cx:css:rgb":
-      var red = value.getRed ();
-      switch (red.getTypeURI ()) {
-      case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
-        red = red.getValue ();
-        if (red < 0 || red > 255) break;
-        var green = value.getGreen ();
-        if (green.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:NUMBER") break;
-        green = green.getValue ();
-        if (green < 0 || green > 255) break;
-        var blue = value.getBlue ();
-        if (blue.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:NUMBER") break;
-        blue = blue.getValue ();
-        if (blue < 0 || blue > 255) break;
-        return true;
-      case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
-        red = red.getValue ();
-        if (red < 0 || red > 100) break;
-        var green = value.getGreen ();
-        if (green.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE")break;
-        green = green.getValue ();
-        if (green < 0 || green > 100) break;
-        var blue = value.getBlue ();
-        if (blue.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE") break;
-        blue = blue.getValue ();
-        if (blue < 0 || blue > 100) break;
-        return true;
-      }
-      break;
-    case "urn:x-suika-fam-cx:css:rgba":
-      var red = value.getRed ();
-      switch (red.getTypeURI ()) {
-      case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
-        red = red.getValue ();
-        if (red < 0 || red > 255) break;
-        var green = value.getGreen ();
-        if (green.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:NUMBER") break;
-        green = green.getValue ();
-        if (green < 0 || green > 255) break;
-        var blue = value.getBlue ();
-        if (blue.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:NUMBER") break;
-        blue = blue.getValue ();
-        if (blue < 0 || blue > 255) break;
-        var alpha = value.getAlpha ();
-        if (alpha.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:NUMBER") break;
-        return true;
-      case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
-        red = red.getValue ();
-        if (red < 0 || red > 100) break;
-        var green = value.getGreen ();
-        if (green.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE")break;
-        green = green.getValue ();
-        if (green < 0 || green > 100) break;
-        var blue = value.getBlue ();
-        if (blue.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE") break;
-        blue = blue.getValue ();
-        if (blue < 0 || blue > 100) break;
-        var alpha = value.getAlpha ();
-        if (alpha.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:NUMBER") break;
-        return true;
-      }
-      break;
-    case "urn:x-suika-fam-cx:css:hsl":
-      var s = value.getSaturation ();
-      if (s.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE") break;
-      s = s.getValue ();
-      if (s < 0 || s > 100) break;
-      var l = value.getLightness ();
-      if (l.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE") break;
-      l = l.getValue ();
-      if (l < 0 || l > 100) break;
-      return true;
-    case "urn:x-suika-fam-cx:css:hsla":
-      var s = value.getSaturation ();
-      if (s.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE") break;
-      s = s.getValue ();
-      if (s < 0 || s > 100) break;
-      var l = value.getLightness ();
-      if (l.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE") break;
-      l = l.getValue ();
-      if (l < 0 || l > 100) break;
-      var alpha = value.getAlpha ();
-      if (alpha.getTypeURI () != "tag:manakai@suika.fam.cx,2005-11:NUMBER") break;
-      return true;
-    }
-    break;
+    return this.validFunction[value.getFunctionExpandedURI ()];
   case "tag:manakai@suika.fam.cx,2005-11:IDENT":
     return (this.validKeyword[value.getExpandedURI ()] ||
             (!partial && this.validKeyword1[value.getExpandedURI ()]));
@@ -1434,12 +1442,6 @@ function (namespaceURI, prefix, localName, parentPropSet, propSet, value,
   switch (value.getTypeURI ()) {
   case "tag:manakai@suika.fam.cx,2005-11:FUNCTION":
     switch (value.getFunctionExpandedURI ()) {
-    case "urn:x-suika-fam-cx:css:rgba":
-      var normalized = value.getNormalizedValue ();
-      if (value != normalized) {
-        propSet.setPropertyValueNS (namespaceURI, prefix, localName, normalized);
-      }
-      break;
     /*
        Although CSS3 color CR defines computed value for |hsl| and |hsla|
        as same as specified value, this implementation converts them
@@ -1447,11 +1449,11 @@ function (namespaceURI, prefix, localName, parentPropSet, propSet, value,
     */
     case "urn:x-suika-fam-cx:css:hsl":
       propSet.setPropertyValueNS (namespaceURI, prefix, localName,
-                                  value.getRGBValue ());
+                                  value.getRGBAValue ());
       break;
     case "urn:x-suika-fam-cx:css:hsla":
       propSet.setPropertyValueNS (namespaceURI, prefix, localName,
-                                  value.getRGBAValue ().getNormalizedValue ());
+                                  value.getRGBAValue ());
       break;
     }
     return;
@@ -1613,18 +1615,11 @@ function (namespaceURI, prefix, localName, parentPropSet, propSet, value,
       if (rgb.length == 3) {
         propSet.setPropertyValueNS
           (namespaceURI, prefix, localName,
-           new cx.fam.suika.y2005.CSS.Value.RGBValue
-             (new cx.fam.suika.y2005.CSS.Value.NumericValue (rgb[0], null, null, null),
-              new cx.fam.suika.y2005.CSS.Value.NumericValue (rgb[1], null, null, null),
-              new cx.fam.suika.y2005.CSS.Value.NumericValue (rgb[2], null, null, null)));
+           new cx.fam.suika.y2005.CSS.Value.RGBValue (rgb[0], rgb[1], rgb[2], 1));
       } else if (rgb.length == 4) {
         propSet.setPropertyValueNS
           (namespaceURI, prefix, localName,
-           new cx.fam.suika.y2005.CSS.Value.RGBAValue
-             (new cx.fam.suika.y2005.CSS.Value.NumericValue (rgb[0], null, null, null),
-              new cx.fam.suika.y2005.CSS.Value.NumericValue (rgb[1], null, null, null),
-              new cx.fam.suika.y2005.CSS.Value.NumericValue (rgb[2], null, null, null),
-              new cx.fam.suika.y2005.CSS.Value.NumericValue (rgb[3], null, null, null)));
+           new cx.fam.suika.y2005.CSS.Value.RGBValue (rgb[0], rgb[1], rgb[2], rgb[3]));
       }
       return;
     }
@@ -1658,8 +1653,14 @@ function (parser, namespaceURI, prefix, localName) {
   if (value == null) return null;
   switch (value.getTypeURI ()) {
   case "tag:manakai@suika.fam.cx,2005-11:FUNCTION":
-  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
     var values = [value, value, value, value];
+    break;
+  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    if (this.validKeyword1[value.getExpandedURI ()]) {
+      var values = [value];
+    } else {
+      var values = [value, value, value, value];
+    }
     break;
   default:
     return null;
@@ -1667,9 +1668,14 @@ function (parser, namespaceURI, prefix, localName) {
   
   value = parser._GetNextValue ();
   if (value == null) return values;
+  if (values.length == 1) return null;
   switch (value.getTypeURI ()) {
   case "tag:manakai@suika.fam.cx,2005-11:FUNCTION":
+    values[1] = value;
+    values[3] = value;
+    break;
   case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    if (this.validKeyword1[value.getExpandedURI ()]) return null;
     values[1] = value;
     values[3] = value;
     break;
@@ -1681,7 +1687,10 @@ function (parser, namespaceURI, prefix, localName) {
   if (value == null) return values;
   switch (value.getTypeURI ()) {
   case "tag:manakai@suika.fam.cx,2005-11:FUNCTION":
+    values[2] = value;
+    break;
   case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    if (this.validKeyword1[value.getExpandedURI ()]) return null;
     values[2] = value;
     break;
   default:
@@ -1692,7 +1701,10 @@ function (parser, namespaceURI, prefix, localName) {
   if (value == null) return values;
   switch (value.getTypeURI ()) {
   case "tag:manakai@suika.fam.cx,2005-11:FUNCTION":
+    values[3] = value;
+    return values;
   case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    if (this.validKeyword1[value.getExpandedURI ()]) return null;
     values[3] = value;
     return values;
   default:
@@ -1709,6 +1721,60 @@ function (namespaceURI, localName, value) {
 
 
 /**
+   Class |CSS.Property.Definition_URI|
+   
+   The definition for a property that only allows one <uri>.
+*/
+cx.fam.suika.y2005.CSS.Property.Definition_URI = function (template) {
+  cx.fam.suika.y2005.CSS.Property.Definition_URI._superclass.apply
+    (this, [template]);
+  this.validFunction["urn:x-suika-fam-cx:css:url"] = true;
+};
+cx.fam.suika.y2005.CSS.Property.Definition_URI.inherits
+  (cx.fam.suika.y2005.CSS.Property.Definition);
+
+cx.fam.suika.y2005.CSS.Property.Definition_URI.prototype.parseValueFromTokens =
+function (parser, namespaceURI, prefix, localName) {
+  var value = parser._GetNextValue ();
+  if (value == null) return null;
+  switch (value.getTypeURI ()) {
+  case "tag:manakai@suika.fam.cx,2005-11:FUNCTION":
+  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    return value;
+  }
+  return null;
+};
+
+cx.fam.suika.y2005.CSS.Property.Definition_URI.prototype.isValidValue =
+function (namespaceURI, localName, value, partial) {
+  switch (value.getTypeURI ()) {
+  case "tag:manakai@suika.fam.cx,2005-11:FUNCTION":
+    return this.validFunction[value.getFunctionExpandedURI ()];
+    return true;
+  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    return (this.validKeyword[value.getExpandedURI ()] ||
+            (!partial && this.validKeyword1[value.getExpandedURI ()]));
+  }
+  return false;
+};
+
+cx.fam.suika.y2005.CSS.Property.Definition_URI.prototype.setComputedValue =
+function (namespaceURI, prefix, localName, parentPropSet, propSet, value,
+          elementNode) {
+  switch (value.getTypeURI ()) {
+  case "tag:manakai@suika.fam.cx,2005-11:URI":
+    /* TODO: resolve relative URIs */
+    break;
+  case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+    cx.fam.suika.y2005.CSS.Property.Definition_URI._super.setComputedValue.apply
+      (this, arguments);
+    return;
+  }
+  /* unchange */
+};
+
+
+/**
    Returns a |setDeclaredValue| method implementation for shorthand
    properties that corresponding to a set of |top|, |right|, |bottom|, and
    |left| longhand properties.
@@ -1716,12 +1782,17 @@ function (namespaceURI, localName, value) {
 cx.fam.suika.y2005.CSS.Property.setDeclaredValue4 =
 function (propNamespaceURI, propPrefix, propSuffix) {
   return function (namespaceURI, prefix, localName, propSet, valueSource, priority) {
-    var checker = cx.fam.suika.y2005.CSS.Property.Definition
+    if (valueSource.length == 1) { /* |inherit| and so on */
+      valueSource = [valueSource[0], valueSource[0], valueSource[0], valueSource[0]];
+    } else {
+      var checker = cx.fam.suika.y2005.CSS.Property.Definition
                   [propNamespaceURI + propPrefix + "bottom" + propSuffix].isValidValue;
-    if (!checker.apply (this, [namespaceURI, localName, valueSource[0], true]) ||
-        !checker.apply (this, [namespaceURI, localName, valueSource[1], true]) ||
-        !checker.apply (this, [namespaceURI, localName, valueSource[2], true]) ||
-        !checker.apply (this, [namespaceURI, localName, valueSource[3], true])) return;
+      if (!checker.apply (this, [namespaceURI, localName, valueSource[0], true]) ||
+          !checker.apply (this, [namespaceURI, localName, valueSource[1], true]) ||
+          !checker.apply (this, [namespaceURI, localName, valueSource[2], true]) ||
+          !checker.apply (this, [namespaceURI, localName, valueSource[3], true]))
+        return;
+    }
     propSet.addPropertyValueNS
       (propNamespaceURI, null, propPrefix + "top" + propSuffix,
        valueSource[0], priority);
@@ -1742,6 +1813,418 @@ function (propNamespaceURI, propPrefix, propSuffix) {
    Instances of property definitions
 */
 
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:background"] =
+new cx.fam.suika.y2005.CSS.Property.Definition ({
+  isShorthand: true,
+  isValidValue: function () { return false },
+  parseValueFromTokens: function (parser, namespaceURI, prefix, localName) {
+    var propDef = {
+      color: cx.fam.suika.y2005.CSS.Property.Definition
+                  ["urn:x-suika-fam-cx:css:background-color"],
+      image: cx.fam.suika.y2005.CSS.Property.Definition
+                  ["urn:x-suika-fam-cx:css:background-image"],
+      repeat: cx.fam.suika.y2005.CSS.Property.Definition
+                  ["urn:x-suika-fam-cx:css:background-repeat"],
+      attachment: cx.fam.suika.y2005.CSS.Property.Definition
+                  ["urn:x-suika-fam-cx:css:background-attachment"],
+      position: cx.fam.suika.y2005.CSS.Property.Definition
+                  ["urn:x-suika-fam-cx:css:background-position"]
+    };
+    var values = {
+      color: propDef.color.initialValue,
+      image: propDef.image.initialValue,
+      repeat: propDef.repeat.initialValue,
+      attachment: propDef.attachment.initialValue,
+      positionX: new cx.fam.suika.y2005.CSS.Value.NumericValue
+                                           (50, null, null, "%"),
+      positionY: new cx.fam.suika.y2005.CSS.Value.NumericValue
+                                           (50, null, null, "%")
+    };
+    
+    for (var i = 0; i < 5; i++) {
+      var value = parser._GetNextValue ();
+      if (value == null) {
+        if (i == 0) return null;
+        return values;
+      }
+      
+      if (propDef.color &&
+          propDef.color.isValidValue (namespaceURI, localName, value, true)) {
+        values.color = value;
+        propDef.color = null;
+      } else if (propDef.image &&
+          propDef.image.isValidValue (namespaceURI, localName, value, true)) {
+        values.image = value;
+        propDef.image = null;
+      } else if (propDef.repeat &&
+          propDef.repeat.isValidValue (namespaceURI, localName, value, true)) {
+        values.repeat = value;
+        propDef.repeat = null;
+      } else if (propDef.attachment &&
+          propDef.attachment.isValidValue (namespaceURI, localName, value, true)) {
+        values.attachment = value;
+        propDef.attachment = null;
+      } else if (propDef.position) {
+        parser._ValueStack.push (value);
+        var valueSourcePosition = propDef.position.parseValueFromTokens
+                                    (parser, namespaceURI, prefix, localName);
+        if (valueSourcePosition == null) return null;
+        values.positionX = valueSourcePosition[0];
+        values.positionY = valueSourcePosition[1];
+      } else {
+        return null;
+      }
+    }
+    return values;
+  },
+  setDeclaredValue: function (namespaceURI, prefix, localName,
+                              propSet, valueSource, priority) {
+    /* Since |parseValueFromTokens| ensures three values are
+       valid, this method does not have to check it. */
+    propSet.addPropertyValueNS ("urn:x-suika-fam-cx:css:", null,
+                                "background-color", valueSource.color, priority);
+    propSet.addPropertyValueNS ("urn:x-suika-fam-cx:css:", null,
+                                "background-image", valueSource.image, priority);
+    propSet.addPropertyValueNS ("urn:x-suika-fam-cx:css:", null,
+                                "background-repeat", valueSource.repeat, priority);
+    propSet.addPropertyValueNS ("urn:x-suika-fam-cx:css:", null, "background-attachment",
+                                valueSource.attachment, priority);
+    propSet.addPropertyValueNS ("http://suika.fam.cx/~wakaba/archive/2005/11/css.", 
+                                "manakai", "background-position-x",
+                                valueSource.positionX, priority);
+    propSet.addPropertyValueNS ("http://suika.fam.cx/~wakaba/archive/2005/11/css.", 
+                                "manakai", "background-position-y",
+                                valueSource.positionY, priority);
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:background-attachment"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
+  /* CSS2.1 */
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "scroll"),
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:fixed": true,
+    "urn:x-suika-fam-cx:css:scroll": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:background-color"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Color ({
+  /* Introduced in CSS1 */
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                   ("urn:x-suika-fam-cx:css:", null, "transparent")
+});
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:background-position"] =
+new cx.fam.suika.y2005.CSS.Property.Definition ({
+  isShorthand: true,
+  isValidValue: function () { return false },
+  parseValueFromTokens: function (parser, namespaceURI, prefix, localName) {
+    var value = parser._GetNextValue ();
+    if (value == null) return null;
+    var defX = cx.fam.suika.y2005.CSS.Property.Definition
+            ["http://suika.fam.cx/~wakaba/archive/2005/11/css.background-position-x"];
+    var defY = cx.fam.suika.y2005.CSS.Property.Definition
+            ["http://suika.fam.cx/~wakaba/archive/2005/11/css.background-position-x"];
+    
+    switch (value.getTypeURI ()) {
+    case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
+    case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
+    case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+      var value1 = value;
+      break;
+    case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+      switch (value.getExpandedURI ()) {
+      case "urn:x-suika-fam-cx:css:left":
+      case "urn:x-suika-fam-cx:css:right":
+        var value1 = value;
+        break;
+      case "urn:x-suika-fam-cx:css:top":
+      case "urn:x-suika-fam-cx:css:bottom":
+        var value1 = parser._GetNextValue ();
+        if (value1 == null) {
+          return [new cx.fam.suika.y2005.CSS.Value.NumericValue
+                                           (50, null, null, "%"), value];
+        }
+        if (value1.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT") {
+          switch (value1.getExpandedURI ()) {
+          case "urn:x-suika-fam-cx:css:left":
+          case "urn:x-suika-fam-cx:css:center":
+          case "urn:x-suika-fam-cx:css:right":
+            return [value1, value];
+          }
+        }
+        parser._ValueStack.push (value1);
+        return null;
+      case "urn:x-suika-fam-cx:css:center":
+        var value2 = parser._GetNextValue ();
+        if (value2 == null) {
+          return [value, new cx.fam.suika.y2005.CSS.Value.NumericValue
+                                                   (50, null, null, "%")];
+        }
+        switch (value2.getTypeURI ()) {
+        case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
+        case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
+        case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+          return [value, value2];
+        case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+          switch (value2.getExpandedURI ()) {
+          case "urn:x-suika-fam-cx:css:top":
+          case "urn:x-suika-fam-cx:css:center":
+          case "urn:x-suika-fam-cx:css:bottom":
+            return [value, value2];
+          case "urn:x-suika-fam-cx:css:left":
+          case "urn:x-suika-fam-cx:css:right":
+            return [value2, value];
+          }
+        }
+        parser._ValueStack.push (value2);
+        return null;
+      default:
+        if (this.validKeyword1[value.getExpandedURI ()]) {
+          var r = [value, value];
+          r.isKeyword1 = true;
+          return r;
+        } else {
+          parser._ValueStack.push (value);
+          return null;
+        }
+      }
+      break;
+    default:
+      parser._ValueStack.push (value);
+      return null;
+    }
+    
+    var value2 = parser._GetNextValue ();
+    if (value2 == null) {
+      return [value, new cx.fam.suika.y2005.CSS.Value.NumericValue
+                                                   (50, null, null, "%")];
+    }
+    switch (value2.getTypeURI ()) {
+    case "tag:manakai@suika.fam.cx,2005-11:DIMENSION":
+    case "tag:manakai@suika.fam.cx,2005-11:PERCENTAGE":
+    case "tag:manakai@suika.fam.cx,2005-11:NUMBER":
+      return [value, value2];
+    case "tag:manakai@suika.fam.cx,2005-11:IDENT":
+      switch (value2.getExpandedURI ()) {
+      case "urn:x-suika-fam-cx:css:top":
+      case "urn:x-suika-fam-cx:css:center":
+      case "urn:x-suika-fam-cx:css:bottom":
+        return [value, value2];
+      }
+    }
+    /* For |background| parser */
+    parser._ValueStack.push (value2);
+    return [value, new cx.fam.suika.y2005.CSS.Value.NumericValue
+                                                   (50, null, null, "%")];
+  },
+  setDeclaredValue: function (namespaceURI, prefix, localName,
+                              propSet, valueSource, priority) {
+    /* Since |parseValueFromTokens| ensures three values are
+       valid, this method does not have to check it. */
+    propSet.addPropertyValueNS
+      ("http://suika.fam.cx/~wakaba/archive/2005/11/css.", "manakai",
+       "background-position-x", valueSource[0], priority);
+    propSet.addPropertyValueNS
+      ("http://suika.fam.cx/~wakaba/archive/2005/11/css.", "manakai",
+       "background-position-y", valueSource[1], priority);
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition
+["http://suika.fam.cx/~wakaba/archive/2005/11/css.background-position-x"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Length ({
+  initialValue: new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, "%"),
+  prefix: "manakai",
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:center":  {
+      computedValue: new cx.fam.suika.y2005.CSS.Value.NumericValue
+                           (50, null, null, "%")
+    },
+    "urn:x-suika-fam-cx:css:left":  {
+      computedValue: new cx.fam.suika.y2005.CSS.Value.NumericValue
+                           (0, null, null, "%")
+    },
+    "urn:x-suika-fam-cx:css:right":  {
+      computedValue: new cx.fam.suika.y2005.CSS.Value.NumericValue
+                           (100, null, null, "%")
+    }
+  },
+  validType: {
+    "tag:manakai@suika.fam.cx,2005-11:length": true,
+    "tag:manakai@suika.fam.cx,2005-11:percentage": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition
+["http://suika.fam.cx/~wakaba/archive/2005/11/css.background-position-y"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Length ({
+  initialValue: new cx.fam.suika.y2005.CSS.Value.NumericValue (0, null, null, "%"),
+  prefix: "manakai",
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:bottom": {
+      computedValue: new cx.fam.suika.y2005.CSS.Value.NumericValue
+                           (100, null, null, "%")
+    },
+    "urn:x-suika-fam-cx:css:center": {
+      computedValue: new cx.fam.suika.y2005.CSS.Value.NumericValue
+                           (50, null, null, "%")
+    },
+    "urn:x-suika-fam-cx:css:top": {
+      computedValue: new cx.fam.suika.y2005.CSS.Value.NumericValue
+                           (0, null, null, "%")
+    }
+  },
+  validType: {
+    "tag:manakai@suika.fam.cx,2005-11:length": true,
+    "tag:manakai@suika.fam.cx,2005-11:percentage": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:background-image"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_URI ({
+  /* Introduced in CSS1 */
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "none"),
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:none": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:background-repeat"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
+  /* CSS2.1 */
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "repeat"),
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:no-repeat": true,
+    "urn:x-suika-fam-cx:css:repeat": true,
+    "urn:x-suika-fam-cx:css:repeat-x": true,
+    "urn:x-suika-fam-cx:css:repeat-y": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:border"] =
+new cx.fam.suika.y2005.CSS.Property.Definition ({
+  isShorthand: true,
+  isValidValue: function () { return false },
+  parseValueFromTokens: function (parser, namespaceURI, prefix, localName) {
+    var value = parser._GetNextValue ();
+    if (value == null) return null;
+    var bColor = cx.fam.suika.y2005.CSS.Property.Definition
+                  ["urn:x-suika-fam-cx:css:border-bottom-color"];
+    var bStyle = cx.fam.suika.y2005.CSS.Property.Definition
+                  ["urn:x-suika-fam-cx:css:border-bottom-style"];
+    var bWidth = cx.fam.suika.y2005.CSS.Property.Definition
+                  ["urn:x-suika-fam-cx:css:border-bottom-width"];
+    var color = bColor.initialValue;
+    var style = bStyle.initialValue;
+    var width = bWidth.initialValue;
+    
+    /* 1st value */
+    if (bColor.isValidValue (namespaceURI, localName, value, true)) {
+      color = value; bColor = null;
+    } else if (bStyle.isValidValue (namespaceURI, localName, value, true)) {
+      style = value; bStyle = null;
+    } else if (bWidth.isValidValue (namespaceURI, localName, value, true)) {
+      width = value; bWidth = null;
+    } else if (value.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
+               this.validKeyword1[value.getExpandedURI ()]) {
+      color = value; bColor = null;
+      style = value; bStyle = null;
+      width = value; bWidth = null;
+    } else {
+      return null;
+    }
+    
+    /* 2nd value */
+    value = parser._GetNextValue ();
+    if (value == null) {
+      //
+    } else if (bColor != null && bColor.isValidValue
+                                  (namespaceURI, localName, value, true)) {
+      color = value; bColor = null;
+      value = parser._GetNextValue ();
+    } else if (bStyle != null && bStyle.isValidValue
+                                  (namespaceURI, localName, value, true)) {
+      style = value; bStyle = null;
+      value = parser._GetNextValue ();
+    } else if (bWidth != null && bWidth.isValidValue
+                                  (namespaceURI, localName, value, true)) {
+      width = value; bWidth = null;
+      value = parser._GetNextValue ();
+    } else {
+      return null;
+    }
+    
+    /* 3rd value */
+    if (value == null) {
+      //
+    } else if (bColor != null && bColor.isValidValue
+                                  (namespaceURI, localName, value, true)) {
+      color = value;
+    } else if (bStyle != null && bStyle.isValidValue
+                                  (namespaceURI, localName, value, true)) {
+      style = value;
+    } else if (bWidth != null && bWidth.isValidValue
+                                  (namespaceURI, localName, value, true)) {
+      width = value;
+    } else {
+      return null;
+    }
+    return [color, style, width];
+  },
+  setDeclaredValue: function (namespaceURI, prefix, localName,
+                              propSet, valueSource, priority) {
+    /* Since |parseValueFromTokens| ensures three values are
+       valid, this method does not have to check it. */
+    propSet.addPropertyValueNS ("urn:x-suika-fam-cx:css:", null,
+                                "border-bottom-color", valueSource[0], priority);
+    propSet.addPropertyValueNS ("urn:x-suika-fam-cx:css:", null,
+                                "border-bottom-style", valueSource[1], priority);
+    propSet.addPropertyValueNS ("urn:x-suika-fam-cx:css:", null,
+                                "border-bottom-width", valueSource[2], priority);
+    propSet.addPropertyValueNS ("urn:x-suika-fam-cx:css:", null,
+                                "border-left-color", valueSource[0], priority);
+    propSet.addPropertyValueNS ("urn:x-suika-fam-cx:css:", null,
+                                "border-left-style", valueSource[1], priority);
+    propSet.addPropertyValueNS ("urn:x-suika-fam-cx:css:", null,
+                                "border-left-width", valueSource[2], priority);
+    propSet.addPropertyValueNS ("urn:x-suika-fam-cx:css:", null,
+                                "border-right-color", valueSource[0], priority);
+    propSet.addPropertyValueNS ("urn:x-suika-fam-cx:css:", null,
+                                "border-right-style", valueSource[1], priority);
+    propSet.addPropertyValueNS ("urn:x-suika-fam-cx:css:", null,
+                                "border-right-width", valueSource[2], priority);
+    propSet.addPropertyValueNS ("urn:x-suika-fam-cx:css:", null,
+                                "border-top-color", valueSource[0], priority);
+    propSet.addPropertyValueNS ("urn:x-suika-fam-cx:css:", null,
+                                "border-top-style", valueSource[1], priority);
+    propSet.addPropertyValueNS ("urn:x-suika-fam-cx:css:", null,
+                                "border-top-width", valueSource[2], priority);
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:border-bottom"] =
+new cx.fam.suika.y2005.CSS.Property.Definition ({
+  isShorthand: true,
+  isValidValue: function () { return false },
+  parseValueFromTokens: cx.fam.suika.y2005.CSS.Property.Definition
+                        ["urn:x-suika-fam-cx:css:border"].parseValueFromTokens,
+  setDeclaredValue: function (namespaceURI, prefix, localName,
+                              propSet, valueSource, priority) {
+    /* Since |parseValueFromTokens| ensures three values are
+       valid, this method does not have to check it. */
+    propSet.addPropertyValueNS
+      ("urn:x-suika-fam-cx:css:", null, localName + "-color",
+       valueSource[0], priority);
+    propSet.addPropertyValueNS
+      ("urn:x-suika-fam-cx:css:", null, localName + "-style",
+       valueSource[1], priority);
+    propSet.addPropertyValueNS
+      ("urn:x-suika-fam-cx:css:", null, localName + "-width",
+       valueSource[2], priority);
+  }
+});
 cx.fam.suika.y2005.CSS.Property.Definition
 ["urn:x-suika-fam-cx:css:border-bottom-color"] =
 new cx.fam.suika.y2005.CSS.Property.Definition_Color ({
@@ -1836,6 +2319,8 @@ new cx.fam.suika.y2005.CSS.Property.Definition_Color4 ({
   setDeclaredValue: cx.fam.suika.y2005.CSS.Property.setDeclaredValue4
                           ("urn:x-suika-fam-cx:css:", "border-", "-color")
 });
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:border-left"]
+  = cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:border-bottom"];
 cx.fam.suika.y2005.CSS.Property.Definition
 ["urn:x-suika-fam-cx:css:border-left-color"]
   = cx.fam.suika.y2005.CSS.Property.Definition
@@ -1849,6 +2334,10 @@ cx.fam.suika.y2005.CSS.Property.Definition
   = cx.fam.suika.y2005.CSS.Property.Definition
     ["urn:x-suika-fam-cx:css:border-bottom-width"];
 cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:border-right"]
+  = cx.fam.suika.y2005.CSS.Property.Definition
+    ["urn:x-suika-fam-cx:css:border-bottom"];
+cx.fam.suika.y2005.CSS.Property.Definition
 ["urn:x-suika-fam-cx:css:border-right-color"]
   = cx.fam.suika.y2005.CSS.Property.Definition
     ["urn:x-suika-fam-cx:css:border-bottom-color"];
@@ -1860,6 +2349,10 @@ cx.fam.suika.y2005.CSS.Property.Definition
 ["urn:x-suika-fam-cx:css:border-right-width"]
   = cx.fam.suika.y2005.CSS.Property.Definition
     ["urn:x-suika-fam-cx:css:border-bottom-width"];
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:border-top"]
+  = cx.fam.suika.y2005.CSS.Property.Definition
+    ["urn:x-suika-fam-cx:css:border-bottom"];
 cx.fam.suika.y2005.CSS.Property.Definition
 ["urn:x-suika-fam-cx:css:border-top-color"]
   = cx.fam.suika.y2005.CSS.Property.Definition
@@ -2085,7 +2578,7 @@ new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
                     "manakai", "inline-inside"),
   prefix: "manakai",
   validKeyword: {
-    "http://suika.fam.cx/~wakaba/archive/2005/11/css.blick-inside": true,
+    "http://suika.fam.cx/~wakaba/archive/2005/11/css.block-inside": true,
     "http://suika.fam.cx/~wakaba/archive/2005/11/css.inline-inside": true
   }
 });
@@ -2126,6 +2619,44 @@ new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
     "urn:x-suika-fam-cx:css:left": true,
     "urn:x-suika-fam-cx:css:none": true,
     "urn:x-suika-fam-cx:css:right": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:font-style"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
+  /* CSS2.1 */
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "normal"),
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:italic": true,
+    "urn:x-suika-fam-cx:css:normal": true,
+    "urn:x-suika-fam-cx:css:oblique": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:font-variant"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
+  /* CSS2.1 */
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "normal"),
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:normal": true,
+    "urn:x-suika-fam-cx:css:small-caps": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:font-weight"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Length ({
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "normal"),
+  negativeNotAllowed: true,
+  /* TODO: Computed value & NUMBER range */
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:bold": true,
+    "urn:x-suika-fam-cx:css:bolder": true,
+    "urn:x-suika-fam-cx:css:lighter": true
+  },
+  validType: {
+    "tag:manakai@suika.fam.cx,2005-11:number": true
   }
 });
 cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:height"] =
@@ -2329,6 +2860,34 @@ cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:padding-right
  = cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:padding-bottom"];
 cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:padding-top"]
  = cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:padding-bottom"];
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:page-break-after"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "auto"),
+  negativeNotAllowed: true,
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:always": true,
+    "urn:x-suika-fam-cx:css:auto": true,
+    "urn:x-suika-fam-cx:css:avoid": true,
+    "urn:x-suika-fam-cx:css:left": true,
+    "urn:x-suika-fam-cx:css:right": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:page-break-before"]
+  = cx.fam.suika.y2005.CSS.Property.Definition
+    ["urn:x-suika-fam-cx:css:page-break-before"];
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:page-break-inside"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "auto"),
+  negativeNotAllowed: true,
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:auto": true,
+    "urn:x-suika-fam-cx:css:avoid": true
+  }
+});
 cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:position"] =
 new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
   initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
@@ -2488,6 +3047,161 @@ new cx.fam.suika.y2005.CSS.Property.Definition_Length ({
     "tag:manakai@suika.fam.cx,2005-11:percentage": true
   }
 });
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:list-style"] =
+new cx.fam.suika.y2005.CSS.Property.Definition ({
+  isShorthand: true,
+  isValidValue: function () { return false },
+  parseValueFromTokens: function (parser, namespaceURI, prefix, localName) {
+    var value = parser._GetNextValue ();
+    if (value == null) return null;
+    var lsType = cx.fam.suika.y2005.CSS.Property.Definition
+                  ["urn:x-suika-fam-cx:css:list-style-type"];
+    var lsPosition = cx.fam.suika.y2005.CSS.Property.Definition
+                  ["urn:x-suika-fam-cx:css:list-style-position"];
+    var lsImage = cx.fam.suika.y2005.CSS.Property.Definition
+                  ["urn:x-suika-fam-cx:css:list-style-image"];
+    var type = lsType.initialValue;
+    var position = lsPosition.initialValue;
+    var image = lsImage.initialValue;
+    var hasNone = false;
+    
+    /* 1st value */
+    if (lsType.isValidValue (namespaceURI, localName, value, true)) {
+      type = value;
+      if (type.getExpandedURI () == "urn:x-suika-fam-cx:css:none") {
+        image = type;
+        hasNone = true;
+      } else {
+        lsType = null;
+      }
+    } else if (lsPosition.isValidValue (namespaceURI, localName, value, true)) {
+      position = value; lsPosition = null;
+    } else if (lsImage.isValidValue (namespaceURI, localName, value, true)) {
+      image = value; lsImage = null;
+    } else if (value.getTypeURI () == "tag:manakai@suika.fam.cx,2005-11:IDENT" &&
+               this.validKeyword1[value.getExpandedURI ()]) {
+      type = value; lsType = null;
+      position = value; lsPosition = null;
+      image = value; lsImage = null;
+    } else {
+      return null;
+    }
+    
+    /* 2nd value */
+    value = parser._GetNextValue ();
+    if (value == null) {
+      //
+    } else if (lsType != null && lsType.isValidValue
+                                  (namespaceURI, localName, value, true)) {
+      type = value;
+      value = parser._GetNextValue ();
+      if (hasNone) {
+        lsImage = null;
+      } else if (type.getExpandedURI () == "urn:x-suika-fam-cx:css:none") {
+        image = type;
+      } else {
+        lsType = null;
+      }
+    } else if (lsPosition != null && lsPosition.isValidValue
+                                  (namespaceURI, localName, value, true)) {
+      position = value; lsPosition = null;
+      value = parser._GetNextValue ();
+    } else if (lsImage != null && lsImage.isValidValue
+                                  (namespaceURI, localName, value, true)) {
+      image = value; lsImage = null;
+      value = parser._GetNextValue ();
+      hasNone = false;
+    } else {
+      return null;
+    }
+    
+    /* 3rd value */
+    if (value == null) {
+      //
+    } else if (lsType != null && lsType.isValidValue
+                                  (namespaceURI, localName, value, true)) {
+      type = value;
+      if (type.getExpandedURI () == "urn:x-suika-fam-cx:css:none") {
+        image = type;
+      }
+    } else if (lsPosition != null && lsPosition.isValidValue
+                                  (namespaceURI, localName, value, true)) {
+      position = value;
+    } else if (lsImage != null && lsImage.isValidValue
+                                  (namespaceURI, localName, value, true)) {
+      image = value;
+    } else {
+      return null;
+    }
+    return [type, position, image];
+  },
+  setDeclaredValue: function (namespaceURI, prefix, localName,
+                              propSet, valueSource, priority) {
+    /* Since |parseValueFromTokens| ensures three values are
+       valid, this method does not have to check it. */
+    propSet.addPropertyValueNS ("urn:x-suika-fam-cx:css:", null,
+                                "list-style-type", valueSource[0], priority);
+    propSet.addPropertyValueNS ("urn:x-suika-fam-cx:css:", null,
+                                "list-style-position", valueSource[1], priority);
+    propSet.addPropertyValueNS ("urn:x-suika-fam-cx:css:", null,
+                                "list-style-image", valueSource[2], priority);
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:list-style-image"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_URI ({
+  /* CSS2.1 */
+  inherit: true,
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "none"),
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:none": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition
+["urn:x-suika-fam-cx:css:list-style-position"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
+  /* CSS2.1 */
+  inherit: true,
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "outside"),
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:inside": true,
+    "urn:x-suika-fam-cx:css:outside": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:list-style-type"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
+  /* CSS2.1 */
+  inherit: true,
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "disc"),
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:lower-alpha": true,
+    "urn:x-suika-fam-cx:css:upper-alpha": true,
+    "urn:x-suika-fam-cx:css:armenian": true,
+    "urn:x-suika-fam-cx:css:circle": true,
+    "urn:x-suika-fam-cx:css:disc": true,
+    "urn:x-suika-fam-cx:css:decimal": true,
+    "urn:x-suika-fam-cx:css:decimal-leading-zero": true,
+    "urn:x-suika-fam-cx:css:georgian": true,
+    "urn:x-suika-fam-cx:css:lower-greek": true,
+    "urn:x-suika-fam-cx:css:lower-latin": true,
+    "urn:x-suika-fam-cx:css:upper-latin": true,
+    "urn:x-suika-fam-cx:css:none": true,
+    "urn:x-suika-fam-cx:css:lower-roman": true,
+    "urn:x-suika-fam-cx:css:upper-roman": true,
+    "urn:x-suika-fam-cx:css:square": true
+  }
+});
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:orphans"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Length ({
+  /* Introduced in CSS2 */
+  inherit: true,
+  initialValue: new cx.fam.suika.y2005.CSS.Value.NumericValue (2, null, null, null),
+  validType: {
+    "tag:manakai@suika.fam.cx,2005-11:integer": true
+  }
+});
 cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:right"]
   = cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:bottom"];
 cx.fam.suika.y2005.CSS.Property.Definition
@@ -2540,8 +3254,22 @@ new cx.fam.suika.y2005.CSS.Property.Definition_Keyword ({
     "urn:x-suika-fam-cx:css:visible": true
   }
 });
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:widows"]
+  = cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:orphans"];
 cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:width"]
   = cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:height"];
+cx.fam.suika.y2005.CSS.Property.Definition["urn:x-suika-fam-cx:css:z-index"] =
+new cx.fam.suika.y2005.CSS.Property.Definition_Length ({
+  /* Introduced in CSS2 */
+  initialValue: new cx.fam.suika.y2005.CSS.Value.IdentValue
+                      ("urn:x-suika-fam-cx:css:", null, "auto"),
+  validKeyword: {
+    "urn:x-suika-fam-cx:css:auto": true
+  },
+  validType: {
+    "tag:manakai@suika.fam.cx,2005-11:integer": true
+  }
+});
 
 cx.fam.suika.y2005.CSS.Property.Definition
 ["http://suika.fam.cx/~wakaba/archive/2005/11/css.props.display"] =
@@ -2636,7 +3364,8 @@ new cx.fam.suika.y2005.CSS.Property.Definition ({
   }
 });
 
-/* Revision: $Date: 2005/11/08 13:58:50 $ */
+
+/* Revision: $Date: 2005/11/09 09:55:19 $ */
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Copyright 2005 Wakaba <w@suika.fam.cx>.  All rights reserved.
